@@ -43,3 +43,7 @@ next-env.d.ts
 # local encrypted document storage (dev only)
 /.storage/
 !.env.example
+
+# auto-generated tool instruction files
+AGENTS.md
+CLAUDE.md

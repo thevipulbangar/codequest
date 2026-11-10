@@ -21,7 +21,7 @@ export async function body<T extends z.ZodType>(req: Request, schema: T): Promis
   return r.data;
 }
 
-// ponytail: in-memory fixed window, per server instance. On serverless each instance has its own counter;
+// NOTE: in-memory fixed window, per server instance. On serverless each instance has its own counter;
 // move to Postgres/Upstash if abuse shows up.
 const hits = new Map<string, { n: number; reset: number }>();
 export function rateLimit(key: string, max: number, windowMs: number) {
