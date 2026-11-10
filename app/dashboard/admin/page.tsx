@@ -30,15 +30,14 @@ export default function AdminReview() {
   return (
     <>
       <PageTitle title="Verification review" sub="Review owner documents, tick the official-register checks, and approve, reject or request more evidence." />
-      <p className="mono mb-4 text-[11px] text-amber-400/90">DEMO: applications are read from this browser’s storage, so you’ll see applicants who signed in on this browser. Production reads from the database.</p>
       <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
         <div className="panel h-fit overflow-hidden">
-          {list.length === 0 && <div className="p-6 text-center text-sm text-muted">No applications yet. Sign in as an operator or station owner, submit documents, then come back.</div>}
+          {list.length === 0 && <div className="p-6 text-center text-sm text-muted">No applications yet.</div>}
           {list.map(v => {
             const b = badgeStates(v.role === "operator" ? "satellite" : "station", v.setup, v.subs);
             const pending = Object.values(v.subs).filter(s => s.status === "submitted").length;
             return (
-              <button key={v.email} onClick={() => setSel(v.email)} className={`block w-full border-b border-line px-4 py-3 text-left last:border-0 hover:bg-white/5 ${sel === v.email ? "bg-white/5" : ""}`}>
+              <button key={v.userId} onClick={() => setSel(v.userId)} className={`block w-full border-b border-line px-4 py-3 text-left last:border-0 hover:bg-white/5 ${sel === v.userId ? "bg-white/5" : ""}`}>
                 <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-medium">{v.name}</span>{pending > 0 && <Pill tone="warn">{pending} to review</Pill>}</div>
                 <div className="truncate text-xs text-muted">{v.email} · {v.role === "operator" ? "Satellite" : "Ground station"} · {v.setup.ownerType}</div>
                 <div className="mono mt-1 text-[11px] text-muted">{b.filter(x => x.earned).length}/3 badges</div>
@@ -46,7 +45,7 @@ export default function AdminReview() {
             );
           })}
         </div>
-        {cur ? <Detail key={cur.email} v={cur} /> : <div className="panel grid min-h-48 place-items-center p-8 text-sm text-muted">Select an applicant to review.</div>}
+        {cur ? <Detail key={cur.userId} v={cur} /> : <div className="panel grid min-h-48 place-items-center p-8 text-sm text-muted">Select an applicant to review.</div>}
       </div>
     </>
   );
@@ -62,7 +61,7 @@ function Detail({ v }: { v: VerificationState }) {
 
   const act = (docId: string, status: Submission["status"]) => {
     if ((status === "rejected" || status === "more_info") && !(notes[docId] ?? "").trim()) return toast.error("Add a note explaining what’s wrong or missing");
-    actions.review(v.email, docId, status, notes[docId]); toast.success(`Marked ${status.replace("_", " ")}`);
+    actions.review(v.userId, docId, status, notes[docId]).then(() => toast.success(`Marked ${status.replace("_", " ")}`), e => toast.error(e.message));
   };
   const missing = docs.filter(d => d.minimum && !v.subs[d.id]);
 
@@ -97,7 +96,7 @@ function Detail({ v }: { v: VerificationState }) {
               </div>
               {s && (<>
                 <div className="mt-1.5 rounded bg-white/3 p-2 text-xs">
-                  {s.notApplicable ? `Declared not applicable: “${s.notApplicable}”` : s.text ? <span className="mono">{s.text}</span> : <><span className="mono">{s.fileName}</span> · {((s.size ?? 0) / 1024).toFixed(0)} KB<div className="mono break-all text-muted">sha256 {s.sha256}</div></>}
+                  {s.notApplicable ? `Declared not applicable: “${s.notApplicable}”` : s.text ? <span className="mono">{s.text}</span> : <>{s.id ? <a href={`/api/admin/documents/${s.id}`} target="_blank" rel="noreferrer" className="mono text-cyan underline">{s.fileName}</a> : <span className="mono">{s.fileName}</span>} · {((s.size ?? 0) / 1024).toFixed(0)} KB<div className="mono break-all text-muted">sha256 {s.sha256}</div></>}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <input value={notes[d.id] ?? s.note ?? ""} onChange={e => setNotes({ ...notes, [d.id]: e.target.value })} placeholder="Reviewer note (required to reject / request more)" className="min-w-0 flex-1 rounded-lg border border-line bg-bg2 px-3 py-1.5 text-xs outline-none focus:border-accent" />
@@ -116,9 +115,9 @@ function Detail({ v }: { v: VerificationState }) {
         {missing.length > 0 && <p className="mb-2 text-xs text-amber-300">{missing.length} required document(s) still missing — approval is blocked: {missing.map(m => m.name).join(", ")}.</p>}
         <input value={finalNote} onChange={e => setFinalNote(e.target.value)} placeholder="Note to the applicant" className="mb-3 w-full rounded-lg border border-line bg-bg2 px-3 py-2 text-sm outline-none focus:border-accent" />
         <div className="flex flex-wrap gap-2">
-          <button disabled={badges.some(b => !b.earned)} onClick={() => { actions.decide(v.email, "approved", finalNote || "Approved."); toast.success("Applicant approved"); }} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm disabled:opacity-40">Approve applicant</button>
-          <button onClick={() => finalNote.trim() ? (actions.decide(v.email, "more_info", finalNote), toast.success("Requested more evidence")) : toast.error("Add a note for the applicant")} className="rounded-lg border border-amber-500/50 px-4 py-2 text-sm text-amber-300">Request more evidence</button>
-          <button onClick={() => finalNote.trim() ? (actions.decide(v.email, "rejected", finalNote), toast.success("Applicant rejected")) : toast.error("Add a note for the applicant")} className="rounded-lg border border-red-500/50 px-4 py-2 text-sm text-red-300">Reject</button>
+          <button disabled={badges.some(b => !b.earned)} onClick={() => actions.decide(v.userId, "approved", finalNote || "Approved.").then(() => toast.success("Applicant approved"), e => toast.error(e.message))} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm disabled:opacity-40">Approve applicant</button>
+          <button onClick={() => finalNote.trim() ? actions.decide(v.userId, "more_info", finalNote).then(() => toast.success("Requested more evidence"), e => toast.error(e.message)) : toast.error("Add a note for the applicant")} className="rounded-lg border border-amber-500/50 px-4 py-2 text-sm text-amber-300">Request more evidence</button>
+          <button onClick={() => finalNote.trim() ? actions.decide(v.userId, "rejected", finalNote).then(() => toast.success("Applicant rejected"), e => toast.error(e.message)) : toast.error("Add a note for the applicant")} className="rounded-lg border border-red-500/50 px-4 py-2 text-sm text-red-300">Reject</button>
         </div>
         <p className="mt-2 text-xs text-muted">“Approve applicant” unlocks only when all three badges are earned. Badges themselves come from per-document approvals, not this button.</p>
       </div>

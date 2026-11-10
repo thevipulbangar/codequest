@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Satellite, LayoutDashboard, Search, Radio, ShieldCheck, Antenna, LogOut, User, BadgeCheck, ClipboardCheck } from "lucide-react";
-import { clearSession, useSession } from "@/lib/session";
+import { signOut, useSession } from "@/lib/session";
 import { BADGE_LABEL, badgeStates, DEFAULT_SETUP } from "@/lib/verification/requirements";
 import { useVerification } from "@/lib/verification/store";
 import { toast } from "sonner";
@@ -31,9 +31,9 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   const session = useSession();
   const [open, setOpen] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
-  const vstate = useVerification(session?.email ?? "");
+  const vstate = useVerification(!!session && session.role !== "admin");
 
-  // Route protection + role is fixed at login: send users to their own area.
+  // Route protection (UX only; every API checks auth server-side) + role is fixed at sign-up: send users to their own area.
   useEffect(() => {
     if (session === null) router.replace("/login");
     else if (session) {
@@ -52,7 +52,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
 
   const initials = session.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const badges = session.role === "admin" ? [] : badgeStates(session.role === "operator" ? "satellite" : "station", vstate?.setup ?? DEFAULT_SETUP, vstate?.subs ?? {});
-  function logout() { clearSession(); toast.success("Signed out"); router.push("/login"); }
+  async function logout() { await signOut(); toast.success("Signed out"); router.push("/login"); }
 
   return (
     <div className="flex min-h-screen">

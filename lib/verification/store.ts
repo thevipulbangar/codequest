@@ -1,67 +1,40 @@
 "use client";
-import { useMemo, useSyncExternalStore } from "react";
-import { DEFAULT_SETUP, type DocStatus, type Setup, type Submission } from "./requirements";
+import { api, revalidate, useApi } from "../api-client";
+import type { DocStatus, Setup, Submission } from "./requirements";
 
-/**
- * DEMO persistence: localStorage, keyed by user email. Only file METADATA + SHA-256 are kept — file contents are
- * never stored or uploaded. Production: Supabase Storage (encrypted bucket) + Postgres, same shapes.
- */
 export interface VerificationState {
-  email: string; name: string; role: "operator" | "owner";
+  userId: string; email: string; name: string; role: "operator" | "owner";
   setup: Setup; subs: Record<string, Submission>;
   decision?: { status: "approved" | "rejected" | "more_info"; note: string; at: number };
   updatedAt: number;
 }
-type All = Record<string, VerificationState>;
 
-const KEY = "orbitpass.verification";
-const EVT = "orbitpass-verification";
-const subscribe = (cb: () => void) => {
-  window.addEventListener(EVT, cb); window.addEventListener("storage", cb);
-  return () => { window.removeEventListener(EVT, cb); window.removeEventListener("storage", cb); };
-};
-const read = (): All => { try { return JSON.parse(localStorage.getItem(KEY) ?? "{}"); } catch { return {}; } };
-const write = (a: All) => { localStorage.setItem(KEY, JSON.stringify(a)); window.dispatchEvent(new Event(EVT)); };
+const MINE = "/api/verification";
+const ALL = "/api/admin/verifications";
 
-/** undefined while hydrating. */
-export function useAllVerifications(): All | undefined {
-  const raw = useSyncExternalStore(subscribe, () => localStorage.getItem(KEY) ?? "{}", () => undefined);
-  return useMemo(() => { if (raw === undefined) return undefined; try { return JSON.parse(raw) as All; } catch { return {}; } }, [raw]);
+/** Own verification (undefined while loading). */
+export const useVerification = (enabled = true) => useApi<VerificationState>(enabled ? MINE : null);
+/** Admin: every applicant, keyed by userId. */
+export function useAllVerifications() {
+  const d = useApi<{ items: VerificationState[] }>(ALL);
+  return d === undefined ? undefined : Object.fromEntries((d?.items ?? []).map(v => [v.userId, v]));
 }
 
-export function useVerification(email: string): VerificationState | undefined {
-  const all = useAllVerifications();
-  return all?.[email];
-}
+const mine = async <T>(p: Promise<T>) => { const r = await p; await revalidate(MINE); return r; };
+const all = async <T>(p: Promise<T>) => { const r = await p; await revalidate(ALL); return r; };
 
-function update(u: { email: string; name: string; role: "operator" | "owner" }, fn: (s: VerificationState) => void) {
-  const all = read();
-  const s = all[u.email] ?? { email: u.email, name: u.name, role: u.role, setup: DEFAULT_SETUP, subs: {}, updatedAt: Date.now() };
-  s.name = u.name; s.role = u.role;
-  fn(s);
-  s.updatedAt = Date.now();
-  all[u.email] = s;
-  write(all);
-}
-
-type User = { email: string; name: string; role: "operator" | "owner" };
 export const actions = {
-  setSetup: (u: User, setup: Setup) => update(u, s => { s.setup = setup; }),
-  submit: (u: User, sub: Omit<Submission, "status" | "submittedAt">) =>
-    update(u, s => { s.subs[sub.docId] = { ...sub, status: "submitted", submittedAt: Date.now() }; delete s.decision; }),
-  remove: (u: User, docId: string) => update(u, s => { delete s.subs[docId]; }),
-  /** Admin: set a document's review status. */
-  review: (email: string, docId: string, status: DocStatus, note?: string) => {
-    const all = read(); const s = all[email]; if (!s?.subs[docId]) return;
-    s.subs[docId] = { ...s.subs[docId], status, note: note || undefined }; s.updatedAt = Date.now(); write(all);
+  setSetup: (setup: Setup) => mine(api(`${MINE}/setup`, { method: "PUT", json: setup })),
+  uploadFile: (docId: string, file: File) => {
+    const form = new FormData(); form.set("docId", docId); form.set("file", file);
+    return mine(api(`${MINE}/documents`, { form }));
   },
-  decide: (email: string, status: "approved" | "rejected" | "more_info", note: string) => {
-    const all = read(); const s = all[email]; if (!s) return;
-    s.decision = { status, note, at: Date.now() }; s.updatedAt = Date.now(); write(all);
-  },
+  submitText: (docId: string, text: string) => mine(api(`${MINE}/documents`, { json: { docId, text } })),
+  markNotApplicable: (docId: string, reason: string) => mine(api(`${MINE}/documents`, { json: { docId, notApplicable: reason } })),
+  startKyc: (docId: string) => mine(api(`${MINE}/documents`, { json: { docId, kyc: true } })),
+  remove: (docId: string) => mine(api(`${MINE}/documents/${docId}`, { method: "DELETE" })),
+  review: (userId: string, docId: string, status: DocStatus, note?: string) =>
+    all(api(`/api/admin/verifications/${userId}/review`, { json: { docId, status, note } })),
+  decide: (userId: string, status: "approved" | "rejected" | "more_info", note: string) =>
+    all(api(`/api/admin/verifications/${userId}/decide`, { json: { status, note } })),
 };
-
-export async function sha256Hex(file: File): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
-}

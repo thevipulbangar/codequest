@@ -5,7 +5,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { ArrowRight, Loader2, Satellite } from "lucide-react";
-import { saveSession } from "@/lib/session";
+import { signIn, signUp } from "@/lib/session";
 import { FadeIn } from "@/components/Motion";
 
 const Schema = z.object({
@@ -14,12 +14,12 @@ const Schema = z.object({
   password: z.string().min(8, "At least 8 characters").max(72),
 });
 
-type Role = "operator" | "owner" | "admin";
+type Role = "operator" | "owner";
 const ROLES: { id: Role; title: string }[] = [
-  { id: "operator", title: "Operator" },
+  { id: "operator", title: "Satellite operator" },
   { id: "owner", title: "Station owner" },
-  { id: "admin", title: "Admin" },
 ];
+const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin" } as const;
 
 const META = [["NETWORK", "Demo · testnet"], ["STATIONS", "5 sites"], ["DATA", "Sample + live TLE"]];
 const gridBg = {
@@ -46,11 +46,17 @@ export default function Login() {
     }
     setErrors({});
     setBusy(true);
-    await new Promise(res => setTimeout(res, 600));
-    // DEMO session only: no password is stored or checked. Replace with Supabase Auth.
-    saveSession({ email: r.data.email, name: r.data.name ?? r.data.email.split("@")[0], role, demo: true });
-    toast.success(mode === "signup" ? "Account created (demo)" : "Signed in (demo)");
-    router.push(role === "owner" ? "/dashboard/station-owner" : role === "admin" ? "/dashboard/admin" : "/dashboard/operator");
+    try {
+      const user = mode === "signup"
+        ? await signUp({ name: r.data.name!, email: r.data.email, password: r.data.password, role })
+        : await signIn(r.data.email, r.data.password);
+      toast.success(mode === "signup" ? "Account created" : "Signed in");
+      router.push(HOME[user.role]);
+    } catch (e) {
+      setErrors({ form: e instanceof Error ? e.message : "Something went wrong" });
+    } finally {
+      setBusy(false);
+    }
   }
 
   const lbl = "mono block text-[11px] uppercase tracking-[.14em] text-muted";
@@ -84,28 +90,30 @@ export default function Login() {
           <h1 className="mt-3 text-3xl font-semibold tracking-tight">{mode === "login" ? "Sign in to OrbitPass" : "Create your account"}</h1>
           <p className="mt-2 text-sm text-muted">{mode === "login" ? "Pick up where your last pass left off." : "Start booking passes in minutes."}</p>
 
-          <div className="mt-7" role="group" aria-label="Role">
+          {mode === "signup" && <div className="mt-7" role="group" aria-label="Role">
             <span className={lbl}>Role</span>
-            <div className="mt-2 grid grid-cols-3 gap-2">
+            <div className="mt-2 grid grid-cols-2 gap-2">
               {ROLES.map(({ id, title }) => (
                 <button type="button" key={id} onClick={() => setRole(id)} aria-pressed={role === id}
                   className={`rounded-md border px-3 py-2.5 text-sm transition ${role === id ? "border-accent bg-accent/10 text-white" : "border-line text-muted hover:bg-white/5"}`}>{title}</button>
               ))}
             </div>
-          </div>
+            <p className="mt-2 text-xs text-muted">Your role is fixed once the account is created.</p>
+          </div>}
 
           <form onSubmit={submit} className="mt-6 space-y-5" noValidate>
             {mode === "signup" && <label className={lbl}>Name<input className={inp} placeholder="Your name" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} autoComplete="name" />{err("name")}</label>}
             <label className={lbl}>Email<input type="email" className={inp} placeholder="you@company.com" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} autoComplete="email" />{err("email")}</label>
             <label className={lbl}>Password<input type="password" className={inp} placeholder="••••••••" value={f.password} onChange={e => setF({ ...f, password: e.target.value })} autoComplete={mode === "login" ? "current-password" : "new-password"} />{err("password")}</label>
-            {mode === "login" && <div className="text-right"><button type="button" onClick={() => toast.info("Password reset needs Supabase Auth — not connected yet")} className="text-sm text-muted underline underline-offset-4 hover:text-white">Forgot password?</button></div>}
+            {mode === "login" && <div className="text-right"><button type="button" onClick={() => toast.info("Password reset by email isn’t enabled yet — contact support")} className="text-sm text-muted underline underline-offset-4 hover:text-white">Forgot password?</button></div>}
             <button disabled={busy} className="mono flex w-full items-center justify-center gap-2 rounded-md bg-accent py-4 text-sm font-semibold uppercase tracking-[.14em] shadow-[0_3px_0_#1d4ed8] transition hover:bg-blue-500 active:translate-y-px active:shadow-none disabled:opacity-60">
               {busy ? <Loader2 size={15} className="animate-spin" /> : null}{mode === "login" ? "Sign in" : "Create account"}{!busy && <ArrowRight size={15} />}
             </button>
+            {errors.form && <p role="alert" className="text-sm normal-case tracking-normal text-red-400">{errors.form}</p>}
           </form>
 
           <div className="my-6 flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
-          <button type="button" onClick={() => toast.info("Google sign-in needs Supabase Auth — not connected yet")} className="flex w-full items-center justify-center gap-3 rounded-md border border-line py-3 text-sm font-medium transition hover:bg-white/5">
+          <button type="button" onClick={() => toast.info("Google sign-in isn’t enabled yet")} className="flex w-full items-center justify-center gap-3 rounded-md border border-line py-3 text-sm font-medium transition hover:bg-white/5">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" /><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z" /><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 010-9.4l-7.9-6.1a24 24 0 000 21.6l7.9-6.1z" /><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" /></svg>
             Sign in with Google
           </button>
@@ -114,7 +122,6 @@ export default function Login() {
             {mode === "login" ? "Don’t have an account?" : "Already have an account?"}{" "}
             <button onClick={() => { setMode(mode === "login" ? "signup" : "login"); setErrors({}); }} className="font-medium text-white underline underline-offset-4">{mode === "login" ? "Create one" : "Sign in"}</button>
           </p>
-          <p className="mono mt-6 text-[11px] text-amber-400/90">DEMO AUTH · no password is stored or checked</p>
         </FadeIn>
       </section>
     </main>
