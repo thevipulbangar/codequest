@@ -109,6 +109,7 @@ export function docsFor(kind: AssetKind, setup: Setup): DocDef[] {
 }
 
 export interface Submission {
+  id?: string;                                         // server id (admin document download)
   docId: string; status: DocStatus; submittedAt: number;
   fileName?: string; size?: number; sha256?: string;   // file docs: metadata + hash only (content is not stored)
   text?: string;                                       // text docs

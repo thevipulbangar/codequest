@@ -5,7 +5,7 @@ import { BadgeCheck, CheckCircle2, CircleDashed, Clock, FileUp, Loader2, Search,
 import { Badge as Pill, PageTitle } from "@/components/ui";
 import { useSession, type Session } from "@/lib/session";
 import { DEFAULT_SETUP, BADGE_DESC, BADGE_LABEL, badgeStates, docsFor, validateFile, validateText, type Badge, type DocDef, type Setup, type SiteControl, type Submission } from "@/lib/verification/requirements";
-import { actions, sha256Hex, useVerification } from "@/lib/verification/store";
+import { actions, useVerification } from "@/lib/verification/store";
 
 const STEPS = [["Identity", "organisation"], ["Representative", "organisation"], ["Asset ownership", "asset"], ["Regulatory", "operator"], ["Admin approval", null]] as const;
 const TONE = { approved: "ok", submitted: "warn", rejected: "bad", more_info: "warn" } as const;
@@ -19,8 +19,7 @@ export default function VerificationPage() {
 }
 
 function Owner({ session }: { session: Session & { role: "operator" | "owner" } }) {
-  const state = useVerification(session.email);
-  const user = { email: session.email, name: session.name, role: session.role };
+  const state = useVerification();
   const kind = session.role === "operator" ? "satellite" : "station";
   const setup = state?.setup ?? DEFAULT_SETUP;
   const subs = state?.subs ?? {};
@@ -29,7 +28,7 @@ function Owner({ session }: { session: Session & { role: "operator" | "owner" } 
   const submittedCount = docs.filter(x => subs[x.id]).length;
   const stepDone = (b: Badge | null) => b ? badges.find(x => x.badge === b)!.earned : state?.decision?.status === "approved";
 
-  const setS = (patch: Partial<Setup>) => actions.setSetup(user, { ...setup, ...patch });
+  const setS = (patch: Partial<Setup>) => actions.setSetup({ ...setup, ...patch }).catch(e => toast.error(e.message));
   const sel = "mt-1.5 w-full rounded-lg border border-line bg-bg2 px-3 py-2.5 text-sm outline-none focus:border-accent";
 
   const groups: { title: string; filter: (d: DocDef) => boolean }[] = [
@@ -89,7 +88,7 @@ function Owner({ session }: { session: Session & { role: "operator" | "owner" } 
         return (
           <div key={g.title} className="panel overflow-hidden">
             <div className="border-b border-line px-5 py-3 text-sm font-medium">{g.title}</div>
-            {list.map(doc => <DocRow key={doc.id} doc={doc} sub={subs[doc.id]} user={user} kind={kind} />)}
+            {list.map(doc => <DocRow key={doc.id} doc={doc} sub={subs[doc.id]} kind={kind} />)}
           </div>
         );
       })}
@@ -97,13 +96,13 @@ function Owner({ session }: { session: Session & { role: "operator" | "owner" } 
       <div className="panel p-5 text-sm">
         <div className="eyebrow mb-2">5 · Admin approval</div>
         <p className="text-muted">{submittedCount} of {docs.length} documents submitted. Reviewers approve, reject or request more evidence per document; badges are issued automatically once every required document for that badge is approved.</p>
-        <p className="mono mt-3 text-[11px] text-amber-400/90">DEMO: only file name, size and SHA-256 are kept in this browser — file contents are never uploaded or stored. Official-register checks (MCA, GST, IN-SPACe, DoT, Space-Track) are done manually by the reviewer.</p>
+        <p className="mono mt-3 text-[11px] text-muted">Files are encrypted (AES-256-GCM) before storage and can only be opened by reviewers; every view is logged. Official-register checks (MCA, GST, IN-SPACe, DoT, Space-Track) are done by the reviewer.</p>
       </div>
     </div>
   );
 }
 
-function DocRow({ doc, sub, user, kind }: { doc: DocDef; sub?: Submission; user: { email: string; name: string; role: "operator" | "owner" }; kind: "satellite" | "station" }) {
+function DocRow({ doc, sub, kind }: { doc: DocDef; sub?: Submission; kind: "satellite" | "station" }) {
   const file = useRef<HTMLInputElement>(null);
   const [text, setText] = useState(sub?.text ?? "");
   const [busy, setBusy] = useState(false);
@@ -113,22 +112,28 @@ function DocRow({ doc, sub, user, kind }: { doc: DocDef; sub?: Submission; user:
   const [lookup, setLookup] = useState<null | { loading: boolean; data?: Record<string, any>; error?: string }>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const locked = sub?.status === "approved";
 
+  /** Runs a server action with busy/error handling. */
+  async function run(fn: () => Promise<unknown>, ok: string) {
+    setErr(""); setBusy(true);
+    try { await fn(); toast.success(ok); return true; }
+    catch (e) { setErr(e instanceof Error ? e.message : "Something went wrong"); return false; }
+    finally { setBusy(false); }
+  }
   async function onFile(f?: File) {
     if (!f) return;
     const e = validateFile(f);
     if (e) return setErr(e);
-    setErr(""); setBusy(true);
-    try { actions.submit(user, { docId: doc.id, fileName: f.name, size: f.size, sha256: await sha256Hex(f) }); toast.success(`${doc.name} submitted`); }
-    finally { setBusy(false); if (file.current) file.current.value = ""; }
+    await run(() => actions.uploadFile(doc.id, f), `${doc.name} uploaded`);
+    if (file.current) file.current.value = "";
   }
   function onText() {
     const e = validateText(doc, text);
     if (e) return setErr(e);
-    setErr(""); actions.submit(user, { docId: doc.id, text: text.trim().toUpperCase() }); toast.success(`${doc.name} submitted`);
+    run(() => actions.submitText(doc.id, text.trim()), `${doc.name} submitted`);
   }
-  function onNA() {
+  async function onNA() {
     if (naReason.trim().length < 10) return setErr("Explain why this doesn’t apply (min 10 characters)");
-    setErr(""); actions.submit(user, { docId: doc.id, notApplicable: naReason.trim() }); setNaOpen(false); toast.success("Marked not applicable — reviewer will confirm");
+    if (await run(() => actions.markNotApplicable(doc.id, naReason.trim()), "Marked not applicable — a reviewer will confirm")) setNaOpen(false);
   }
   async function check() {
     setLookup({ loading: true });
@@ -164,16 +169,16 @@ function DocRow({ doc, sub, user, kind }: { doc: DocDef; sub?: Submission; user:
           </>)}
           {doc.kind === "text" && (<>
             <input value={text} onChange={e => setText(e.target.value)} placeholder={doc.patternHint} className="mono w-64 max-w-full rounded-lg border border-line bg-bg2 px-3 py-2 text-xs uppercase outline-none focus:border-accent" aria-label={doc.name} />
-            <button onClick={onText} className="rounded-lg bg-accent px-3 py-2 text-xs font-medium hover:bg-blue-500">{sub?.text ? "Update" : "Submit"}</button>
+            <button disabled={busy} onClick={onText} className="rounded-lg bg-accent px-3 py-2 text-xs font-medium hover:bg-blue-500">{sub?.text ? "Update" : "Submit"}</button>
             {doc.id === "norad" && kind === "satellite" && <button disabled={!text.trim() || lookup?.loading} onClick={check} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-xs hover:bg-white/5 disabled:opacity-40">{lookup?.loading ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}Check public records</button>}
           </>)}
-          {doc.kind === "kyc" && <button onClick={() => { actions.submit(user, { docId: doc.id, text: "KYC-PROVIDER-DEMO" }); toast.info("Demo only: no KYC provider is connected"); }} className="rounded-lg border border-line px-3 py-2 text-xs hover:bg-white/5">Start KYC check (demo)</button>}
+          {doc.kind === "kyc" && <button disabled={busy} onClick={() => run(() => actions.startKyc(doc.id), "KYC request recorded — a reviewer will complete it")} className="rounded-lg border border-line px-3 py-2 text-xs hover:bg-white/5">Request KYC check</button>}
           {doc.whereApplicable && !sub && <button onClick={() => setNaOpen(!naOpen)} className="text-xs text-muted underline underline-offset-4 hover:text-white">Not applicable to me</button>}
-          {sub && sub.status !== "approved" && <button onClick={() => actions.remove(user, doc.id)} className="inline-flex items-center gap-1 text-xs text-muted hover:text-red-300"><X size={12} />Remove</button>}
+          {sub && sub.status !== "approved" && <button disabled={busy} onClick={() => run(() => actions.remove(doc.id), "Removed")} className="inline-flex items-center gap-1 text-xs text-muted hover:text-red-300"><X size={12} />Remove</button>}
         </div>
       )}
       {naOpen && !sub && (
-        <div className="mt-2 flex flex-wrap gap-2"><input value={naReason} onChange={e => setNaReason(e.target.value)} placeholder="Why does this not apply to your station/service?" className="min-w-0 flex-1 rounded-lg border border-line bg-bg2 px-3 py-2 text-xs outline-none focus:border-accent" /><button onClick={onNA} className="rounded-lg bg-accent px-3 py-2 text-xs">Confirm</button></div>
+        <div className="mt-2 flex flex-wrap gap-2"><input value={naReason} onChange={e => setNaReason(e.target.value)} placeholder="Why does this not apply to your station/service?" className="min-w-0 flex-1 rounded-lg border border-line bg-bg2 px-3 py-2 text-xs outline-none focus:border-accent" /><button disabled={busy} onClick={onNA} className="rounded-lg bg-accent px-3 py-2 text-xs">Confirm</button></div>
       )}
       {err && <p className="mt-2 text-xs text-red-400">{err}</p>}
       {lookup?.data && (

@@ -1,35 +1,39 @@
 "use client";
-import { useMemo, useSyncExternalStore } from "react";
+import { api, clearApiCache, revalidate, useApi } from "./api-client";
 
 export interface Session {
-  email: string; name: string; role: "operator" | "owner" | "admin"; demo: boolean;
-  jobTitle?: string; phone?: string; country?: string;
-  company?: string; companyType?: string; website?: string; about?: string;
+  id: string; email: string; name: string; role: "operator" | "owner" | "admin";
+  jobTitle?: string | null; phone?: string | null; country?: string | null;
+  company?: string | null; companyType?: string | null; website?: string | null; about?: string | null;
 }
 
-const KEY = "orbitpass.session";
-const EVT = "orbitpass-session";
+const ME = "/api/auth/me";
 
-const subscribe = (cb: () => void) => {
-  window.addEventListener(EVT, cb);
-  window.addEventListener("storage", cb);
-  return () => { window.removeEventListener(EVT, cb); window.removeEventListener("storage", cb); };
-};
-
-/** undefined = still hydrating, null = signed out. DEMO session in localStorage; swap for Supabase Auth. */
+/** undefined = loading, null = signed out. Session lives in an httpOnly cookie; this reads /api/auth/me. */
 export function useSession(): Session | null | undefined {
-  const raw = useSyncExternalStore(subscribe, () => localStorage.getItem(KEY) ?? "", () => undefined);
-  return useMemo(() => {
-    if (raw === undefined) return undefined;
-    try { return raw ? (JSON.parse(raw) as Session) : null; } catch { return null; }
-  }, [raw]);
+  const d = useApi<{ user: Session }>(ME);
+  return d === undefined ? undefined : d?.user ?? null;
 }
 
-export function saveSession(s: Session) {
-  localStorage.setItem(KEY, JSON.stringify(s));
-  window.dispatchEvent(new Event(EVT));
+export async function signIn(email: string, password: string) {
+  const { user } = await api<{ user: Session }>("/api/auth/login", { json: { email, password } });
+  await revalidate(ME);
+  return user;
 }
-export function clearSession() {
-  localStorage.removeItem(KEY);
-  window.dispatchEvent(new Event(EVT));
+
+export async function signUp(input: { name: string; email: string; password: string; role: "operator" | "owner" }) {
+  const { user } = await api<{ user: Session }>("/api/auth/signup", { json: input });
+  await revalidate(ME);
+  return user;
+}
+
+export async function signOut() {
+  await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+  clearApiCache();
+  await revalidate(ME);
+}
+
+export async function updateProfile(patch: Partial<Omit<Session, "id" | "email" | "role">>) {
+  await api(ME, { method: "PATCH", json: patch });
+  await revalidate(ME);
 }
