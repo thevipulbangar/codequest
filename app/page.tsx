@@ -6,6 +6,8 @@ import { Counter, FadeIn, GrowBar } from "@/components/Motion";
 import { MobileNav } from "@/components/MobileNav";
 import { STATIONS } from "@/lib/orbital/catalog";
 import { getNetworkStats } from "@/lib/orbital/stats";
+import { connection } from "next/server";
+import { Suspense } from "react";
 
 const steps = [
   [Search, "Discover", "Real SGP4 pass prediction over live public TLEs."],
@@ -21,7 +23,9 @@ const Btn = ({ href, children, primary }: { href: string; children: React.ReactN
   </Link>
 );
 
-export default async function Home() {
+/** Live numbers stream in after the static shell (they depend on the current time). */
+async function LiveTiles() {
+  await connection();
   const stats = await getNetworkStats(); // real SGP4 numbers, cached 5 min
   const tiles = [
     [String(stats.satellites), "Public satellites tracked"],
@@ -29,6 +33,21 @@ export default async function Home() {
     [String(stats.passes24h), "Predicted passes, next 24 h"],
     [`${stats.avgContactMinPerPair} min`, `Avg contact / day per satellite-station pair (${stats.contactPct}% of the day)`],
   ];
+  return <>
+    {tiles.map(([v, l]) => (
+      <div key={l} className="panel m-1 p-5"><div className="text-3xl font-semibold tracking-tight"><Counter value={v} /></div><div className="mt-1 text-sm text-muted">{l}</div></div>
+    ))}
+    {stats.source === "sample" && <p className="mono col-span-full m-1 text-xs text-amber-400">DEMO TLE — CelesTrak unreachable, figures are from a stale sample orbit.</p>}
+  </>;
+}
+
+async function StationLive({ id }: { id: string }) {
+  await connection();
+  const p = (await getNetworkStats()).perStation.find(x => x.id === id);
+  return <>{p?.passes ?? 0} passes · {p?.contactMin ?? 0} contact min next 24 h</>;
+}
+
+export default function Home() {
   return (
     <main>
       <div className="h-[68px]" aria-hidden />
@@ -51,15 +70,13 @@ export default async function Home() {
             <Btn href="/dashboard/operator/find-pass" primary>Explore Satellite Passes <ArrowRight size={16} /></Btn>
             <Btn href="/dashboard/station-owner">Become a Ground Station Partner</Btn>
           </div></FadeIn>
-          <p className="mono mt-6 text-xs text-muted">Orbits on the globe are illustrative · Station sites are real coordinates · Pass counts are live SGP4 on CelesTrak data{stats.source === "sample" ? " (DEMO TLE — CelesTrak unreachable)" : ""} · Prices are sample data</p>
+          <p className="mono mt-6 text-xs text-muted">Orbits on the globe are illustrative · Station sites are real coordinates · Pass counts are live SGP4 on CelesTrak data · Prices are sample data</p>
         </div>
         <FadeIn delay={0.3} y={0} className="relative h-[340px] sm:h-[460px] md:h-[600px]"><div className="float h-full w-full"><GlobeClient stations={STATIONS.map(s => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon }))} /></div></FadeIn>
       </section>
 
       <section className="mx-auto grid max-w-7xl grid-cols-2 gap-px overflow-hidden px-6 md:grid-cols-4">
-        {tiles.map(([v, l]) => (
-          <div key={l} className="panel m-1 p-5"><div className="text-3xl font-semibold tracking-tight"><Counter value={v} /></div><div className="mt-1 text-sm text-muted">{l}</div></div>
-        ))}
+        <Suspense fallback={Array.from({ length: 4 }, (_, i) => <div key={i} className="skeleton m-1 h-[104px]" />)}><LiveTiles /></Suspense>
       </section>
 
       <Section id="how" eyebrow="How it works" title="A marketplace for every pass.">
@@ -78,7 +95,7 @@ export default async function Home() {
               <div className="mt-1 text-sm text-muted">{s.country} · {s.antenna} {s.diameterM} m</div>
               <div className="mt-4 flex flex-wrap gap-1.5">{s.bands.map(b => <span key={b} className="mono rounded border border-line px-2 py-0.5 text-xs text-slate-300">{b}</span>)}</div>
               <div className="mono mt-4 text-sm">{s.pricePerPass} tUSD <span className="text-muted">/ pass (sample)</span></div>
-              <div className="mono mt-1 text-xs text-cyan">{stats.perStation.find(p => p.id === s.id)?.passes ?? 0} passes · {stats.perStation.find(p => p.id === s.id)?.contactMin ?? 0} contact min next 24 h</div>
+              <div className="mono mt-1 text-xs text-cyan"><Suspense fallback="computing passes…"><StationLive id={s.id} /></Suspense></div>
             </div></Reveal>
           ))}
         </div>

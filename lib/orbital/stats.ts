@@ -19,8 +19,13 @@ let cache: { at: number; v: NetworkStats } | undefined;
 const TTL = 5 * 60_000;
 
 /** Everything here is computed from public TLEs with SGP4 — no fabricated figures. Cached for 5 min. */
-export async function getNetworkStats(): Promise<NetworkStats> {
-  if (cache && Date.now() - cache.at < TTL) return cache.v;
+let inflight: Promise<NetworkStats> | undefined;
+export function getNetworkStats(): Promise<NetworkStats> {
+  if (cache && Date.now() - cache.at < TTL) return Promise.resolve(cache.v);
+  return (inflight ??= compute().finally(() => { inflight = undefined; }));
+}
+
+async function compute(): Promise<NetworkStats> {
   const from = Date.now(), to = from + 24 * 3600_000;
   let source: "celestrak" | "sample" = "celestrak";
   const per = new Map(STATIONS.map(s => [s.id, { id: s.id, name: s.name, passes: 0, contactMin: 0 }]));
