@@ -1,0 +1,104 @@
+// OrbitPass backend schema (Postgres / Supabase).
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  operator
+  owner
+  admin
+}
+
+enum DocStatus {
+  submitted
+  approved
+  rejected
+  more_info
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role
+  // profile
+  jobTitle     String?
+  phone        String?
+  country      String?
+  company      String?
+  companyType  String?
+  website      String?
+  about        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions     Session[]
+  verification Verification?
+  reviews      AuditLog[]    @relation("actor")
+}
+
+/// Opaque session tokens; only the SHA-256 of the token is stored.
+model Session {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Verification {
+  id             String        @id @default(uuid())
+  userId         String        @unique
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setup          Json          // lib/verification/requirements.ts Setup
+  decision       String?       // approved | rejected | more_info
+  decisionNote   String?
+  decidedAt      DateTime?
+  updatedAt      DateTime      @updatedAt
+  submissions    Submission[]
+}
+
+model Submission {
+  id             String       @id @default(uuid())
+  verificationId String
+  verification   Verification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+  docId          String
+  status         DocStatus    @default(submitted)
+  // file docs: encrypted object in storage; we keep metadata + plaintext SHA-256 for integrity
+  fileName       String?
+  mimeType       String?
+  size           Int?
+  sha256         String?
+  storageKey     String?
+  text           String?      // text docs (CIN, PAN, NORAD...)
+  notApplicable  String?      // reason for "where applicable" docs
+  reviewNote     String?
+  submittedAt    DateTime     @default(now())
+  reviewedAt     DateTime?
+
+  @@unique([verificationId, docId])
+  @@index([status])
+}
+
+/// Every admin action and document access is recorded.
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String
+  actor     User     @relation("actor", fields: [actorId], references: [id])
+  action    String
+  target    String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([target])
+}
