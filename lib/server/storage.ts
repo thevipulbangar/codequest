@@ -37,7 +37,7 @@ export async function putObject(objectKey: string, plain: Buffer) {
   const s = supa();
   if (s) {
     const r = await fetch(`${s.url}/storage/v1/object/${BUCKET}/${objectKey}`, {
-      method: "POST", headers: { Authorization: `Bearer ${s.key}`, "Content-Type": "application/octet-stream", "x-upsert": "true" }, body: new Uint8Array(blob),
+      method: "POST", headers: { apikey: s.key, Authorization: `Bearer ${s.key}`, "Content-Type": "application/octet-stream", "x-upsert": "true" }, body: new Uint8Array(blob),
     });
     if (!r.ok) throw new Error(`storage upload failed: ${r.status} ${await r.text()}`);
     return;
@@ -51,7 +51,7 @@ export async function putObject(objectKey: string, plain: Buffer) {
 export async function getObject(objectKey: string): Promise<Buffer> {
   const s = supa();
   if (s) {
-    const r = await fetch(`${s.url}/storage/v1/object/${BUCKET}/${objectKey}`, { headers: { Authorization: `Bearer ${s.key}` } });
+    const r = await fetch(`${s.url}/storage/v1/object/${BUCKET}/${objectKey}`, { headers: { apikey: s.key, Authorization: `Bearer ${s.key}` } });
     if (!r.ok) throw new Error(`storage download failed: ${r.status}`);
     return decrypt(Buffer.from(await r.arrayBuffer()));
   }
