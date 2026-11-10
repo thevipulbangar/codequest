@@ -42,7 +42,8 @@ export async function putObject(objectKey: string, plain: Buffer) {
     if (!r.ok) throw new Error(`storage upload failed: ${r.status} ${await r.text()}`);
     return;
   }
-  if (process.env.VERCEL) throw new Error("Supabase Storage env vars are required on Vercel");
+  // Serverless hosts (Netlify, Vercel) have no persistent disk.
+  if (process.env.NODE_ENV === "production") throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required in production");
   const p = path.join(LOCAL, objectKey);
   await mkdir(path.dirname(p), { recursive: true });
   await writeFile(p, blob);

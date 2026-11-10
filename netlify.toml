@@ -1,0 +1,9 @@
+# Netlify auto-detects Next.js and applies its Next.js runtime; this just pins the build.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # dependency tree needs this (vitest/vite peer ranges)
+  NPM_FLAGS = "--legacy-peer-deps"
