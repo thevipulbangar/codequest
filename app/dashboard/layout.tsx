@@ -61,7 +61,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex min-h-screen">
       <aside className="hidden w-60 shrink-0 border-r border-line bg-bg2/80 p-4 md:block">
-        <Link href="/" className="mb-6 flex items-center gap-2 font-semibold"><span className="grid h-7 w-7 place-items-center rounded-md bg-accent"><Satellite size={15} /></span>OrbitPass</Link>
+        <Link href={HOME[session.role]} className="mb-6 flex items-center gap-2 font-semibold"><span className="grid h-7 w-7 place-items-center rounded-md bg-accent"><Satellite size={15} /></span>OrbitPass</Link>
         <div className="mono mb-3 px-3 text-[11px] uppercase tracking-[.14em] text-muted">{ROLE_LABEL[session.role]}</div>
         <nav className="space-y-1">
           {NAV[session.role].map(([href, label, Icon]) => (
