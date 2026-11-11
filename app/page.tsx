@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, Radio, Satellite, ShieldCheck, Coins, Search, Lock, FileCheck2, Globe2, Cpu } from "lucide-react";
+import { Logo } from "@/components/Logo";
+import { ArrowRight, Radio, ShieldCheck, Coins, Search, Lock, FileCheck2, Globe2, Cpu } from "lucide-react";
 import { GlobeClient } from "@/components/globe/GlobeClient";
 import { Reveal } from "@/components/Reveal";
 import { Counter, FadeIn, GrowBar } from "@/components/Motion";
@@ -82,7 +83,7 @@ export default function Home() {
       <div className="h-[68px]" aria-hidden />
       <header className="glass glass-fixed pb-3">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight"><span className="grid h-7 w-7 place-items-center rounded-md bg-accent"><Satellite size={15} /></span>OrbitPass</Link>
+        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight"><Logo />OrbitPass</Link>
         <div className="hidden gap-8 text-sm text-muted md:flex">
           <a href="#how" className="nav-link hover:text-white">How it works</a><a href="#proof" className="nav-link hover:text-white">Proof of Downlink</a><a href="#stack" className="nav-link hover:text-white">Architecture</a>
         </div>

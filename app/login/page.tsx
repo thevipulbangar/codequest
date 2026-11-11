@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { z } from "zod";
@@ -82,7 +83,7 @@ function LoginForm() {
         <div className="pointer-events-none absolute inset-0" style={gridBg} />
         <div className="pointer-events-none absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-accent/15 blur-3xl" />
         <Link href="/" className="mono relative flex w-fit items-center gap-3 text-sm font-semibold uppercase tracking-[.2em]">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-accent"><Satellite size={15} /></span>OrbitPass
+          <Logo />OrbitPass
         </Link>
         <FadeIn className="relative">
           <div className="mono mb-6 flex items-center gap-2 text-xs uppercase tracking-[.14em] text-muted"><span className="pulse-dot" />MISSION CONTROL · LIVE</div>
@@ -97,7 +98,7 @@ function LoginForm() {
       {/* Form panel */}
       <section className="flex items-center px-6 py-12 sm:px-14 xl:px-24">
         <FadeIn delay={0.15} className="w-full max-w-md">
-          <Link href="/" className="mono mb-10 flex items-center gap-2 text-sm font-semibold uppercase tracking-[.2em] lg:hidden"><span className="grid h-7 w-7 place-items-center rounded-md bg-accent"><Satellite size={15} /></span>OrbitPass</Link>
+          <Link href="/" className="mono mb-10 flex items-center gap-2 text-sm font-semibold uppercase tracking-[.2em] lg:hidden"><Logo />OrbitPass</Link>
           {role !== "admin" ? (
             <div role="tablist" aria-label="Account type" className="grid grid-cols-2 gap-2">
               {TABS.map(({ id, title, icon: Icon, blurb }) => (
