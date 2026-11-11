@@ -22,6 +22,6 @@ export const POST = handle(async (req: Request) => {
   if (!user || !ok) throw new HttpError(401, "Invalid email or password");
   // Checked only after the password matches, so it can't be used to probe which emails exist.
   if (b.role && b.role !== user.role) throw new HttpError(403, `This is a ${LABEL[user.role]} account — use the ${LABEL[user.role]} sign-in.`);
-  await startSession(user.id);
+  await startSession(user);
   return NextResponse.json({ user: publicUser(user) });
 });

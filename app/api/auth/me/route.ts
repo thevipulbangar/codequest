@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/server/db";
-import { publicUser, requireUser } from "@/lib/server/auth";
+import { forgetUser, publicUser, requireUser } from "@/lib/server/auth";
 import { body, handle } from "@/lib/server/http";
 
 export const GET = handle(async () => NextResponse.json({ user: publicUser(await requireUser()) }));
@@ -20,5 +20,6 @@ export const PATCH = handle(async (req: Request) => {
   const u = await requireUser();
   const data = await body(req, Profile);
   const user = await db.user.update({ where: { id: u.id }, data });
+  forgetUser(u.id); // next request reloads the fresh profile
   return NextResponse.json({ user: publicUser(user) });
 });
