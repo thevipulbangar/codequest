@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Satellite, LayoutDashboard, Search, Radio, ShieldCheck, Antenna, LogOut, User, BadgeCheck, ClipboardCheck } from "lucide-react";
+import { Satellite, LayoutDashboard, Search, Radio, Antenna, LogOut, User, BadgeCheck, ClipboardCheck, Boxes } from "lucide-react";
 import { signOut, useSession } from "@/lib/session";
 import { BADGE_LABEL, badgeStates, DEFAULT_SETUP } from "@/lib/verification/requirements";
 import { useVerification } from "@/lib/verification/store";
@@ -13,14 +13,18 @@ const NAV = {
     ["/dashboard/operator", "Overview", LayoutDashboard],
     ["/dashboard/operator/find-pass", "Find Passes", Search],
     ["/dashboard/operator/stations", "Stations", Radio],
-    ["/dashboard/operator/verification", "Proof of Downlink", ShieldCheck],
+    ["/dashboard/operator/satellites", "My Satellites", Satellite],
     ["/dashboard/verification", "Owner verification", BadgeCheck],
   ],
   owner: [
     ["/dashboard/station-owner", "Overview", LayoutDashboard],
+    ["/dashboard/station-owner/stations", "My Stations", Antenna],
     ["/dashboard/verification", "Owner verification", BadgeCheck],
   ],
-  admin: [["/dashboard/admin", "Verification review", ClipboardCheck]],
+  admin: [
+    ["/dashboard/admin", "Verification review", ClipboardCheck],
+    ["/dashboard/admin/assets", "Asset review", Boxes],
+  ],
 } as const;
 const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin" } as const;
 const ROLE_LABEL = { operator: "Satellite operator", owner: "Ground station owner", admin: "Admin" } as const;
@@ -67,9 +71,8 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
       </aside>
       <div className="min-w-0 flex-1">
         <header className="glass glass-solid flex items-center justify-between px-4 py-3 pb-5 sm:px-6">
-          <span className="mono rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-400">DEMO MODE<span className="hidden lg:inline"> · testnet only · sample marketplace data</span></span>
+          <span className="text-sm text-muted">{ROLE_LABEL[session.role]}</span>
           <div className="flex items-center gap-4">
-            <span className="hidden items-center gap-2 text-xs text-muted sm:flex"><Antenna size={14} />Wallet: not connected</span>
             <div className="relative" ref={menu}>
               <button onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} className="flex items-center gap-2 rounded-full border border-line bg-card py-1 pl-1 pr-3 text-sm hover:bg-white/5">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-accent text-xs font-semibold">{initials}</span>

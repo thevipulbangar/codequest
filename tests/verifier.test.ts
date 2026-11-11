@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_MISSING, demoStationKeys, generateManifest, generateReceipt, tamperFrame } from "../lib/verifier/demo";
+import { FIXTURE_MISSING, fixtureStationKeys, generateManifest, generateReceipt, tamperFrame } from "../lib/verifier/fixtures";
 import { signReceipt } from "../lib/verifier/receipt";
 import { verifyReceipt } from "../lib/verifier/verify";
 import { settle, toUnits } from "../lib/verifier/settlement";
@@ -9,7 +9,7 @@ const win = { start: 1_000_000, end: 1_000_000 + 600_000, downlinkHz: 437e6, max
 const m = generateManifest("b1");
 const receipt = generateReceipt(m, "st1", win);
 const resign = (r: typeof receipt, frames: typeof receipt.frames) => {
-  const k = demoStationKeys();
+  const k = fixtureStationKeys();
   return signReceipt({ bookingId: r.bookingId, stationId: r.stationId, manifestRoot: r.manifestRoot, frames }, k.publicKey, k.privateKey);
 };
 
@@ -17,7 +17,7 @@ describe("verifier", () => {
   it("judge scenario: 94/100 verified, 6 missing", () => {
     const r = verifyReceipt(m, receipt, win);
     expect(r.verified).toBe(94);
-    expect(r.missing).toEqual(DEMO_MISSING);
+    expect(r.missing).toEqual(FIXTURE_MISSING);
     expect(r.deliveryBps).toBe(9400);
     expect(r.confidence).toBe("high");
   });

@@ -17,14 +17,14 @@ export function generateManifest(bookingId: string, n = 100, seed = 42): Manifes
   return { bookingId, frames, root: merkleRoot(frames) };
 }
 
-/** DEMO-ONLY station key, generated once per server process. Never a real key. */
-let demoKeys: ReturnType<typeof newStationKeys> | undefined;
-export const demoStationKeys = () => (demoKeys ??= newStationKeys());
+/** TEST-ONLY station key, generated once per server process. Never a real key. */
+let fixtureKeys: ReturnType<typeof newStationKeys> | undefined;
+export const fixtureStationKeys = () => (fixtureKeys ??= newStationKeys());
 
-export const DEMO_MISSING = [9, 22, 37, 58, 71, 90];
+export const FIXTURE_MISSING = [9, 22, 37, 58, 71, 90];
 
 /** Station receipt for a replay that drops `missingIds` (default: the 6 judge-scenario frames => 94 delivered). */
-export function generateReceipt(m: Manifest, stationId: string, win: PassWindow, missingIds = DEMO_MISSING, seed = 7): Receipt {
+export function generateReceipt(m: Manifest, stationId: string, win: PassWindow, missingIds = FIXTURE_MISSING, seed = 7): Receipt {
   const r = rng(seed);
   const missing = new Set(missingIds);
   const span = win.end - win.start;
@@ -36,7 +36,7 @@ export function generateReceipt(m: Manifest, stationId: string, win: PassWindow,
       dopplerHz: Math.round(win.maxDopplerHz * (1 - 2 * frac) + (r() - 0.5) * win.maxDopplerHz * 0.04),
     };
   });
-  const k = demoStationKeys();
+  const k = fixtureStationKeys();
   return signReceipt({ bookingId: m.bookingId, stationId, manifestRoot: m.root, frames }, k.publicKey, k.privateKey);
 }
 
@@ -47,6 +47,6 @@ export function generateReceipt(m: Manifest, stationId: string, win: PassWindow,
 export function tamperFrame(r: Receipt, frameId: number, resign = true): Receipt {
   const frames = r.frames.map(f => (f.id === frameId ? { ...f, hash: sha256("tampered" + f.hash) } : f));
   if (!resign) return { ...r, frames };
-  const k = demoStationKeys();
+  const k = fixtureStationKeys();
   return signReceipt({ bookingId: r.bookingId, stationId: r.stationId, manifestRoot: r.manifestRoot, frames }, k.publicKey, k.privateKey);
 }
