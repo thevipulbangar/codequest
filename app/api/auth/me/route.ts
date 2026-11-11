@@ -3,8 +3,9 @@ import { z } from "zod";
 import { db } from "@/lib/server/db";
 import { forgetUser, publicUser, requireUser } from "@/lib/server/auth";
 import { body, handle } from "@/lib/server/http";
+import { emailEnabled } from "@/lib/server/email";
 
-export const GET = handle(async () => NextResponse.json({ user: publicUser(await requireUser()) }));
+export const GET = handle(async () => NextResponse.json({ user: publicUser(await requireUser()), emailEnabled: emailEnabled() }));
 
 const opt = (max: number) => z.string().trim().max(max).optional().nullable().transform(v => (v ? v : null));
 const Profile = z.object({
