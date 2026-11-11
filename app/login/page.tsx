@@ -22,7 +22,7 @@ const TABS = [
 const NOUN = { operator: "satellite operator", owner: "station owner", admin: "admin" } as const;
 const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin" } as const;
 
-const META = [["NETWORK", "Demo · testnet"], ["STATIONS", "5 sites"], ["DATA", "Sample + live TLE"]];
+const META = [["VERIFICATION", "3-badge owner checks"], ["ORBIT DATA", "Live CelesTrak · SGP4"], ["SETTLEMENT", "Pro-rata, verified"]];
 const gridBg = {
   backgroundImage: "linear-gradient(#ffffff0d 1px, transparent 1px), linear-gradient(90deg, #ffffff0d 1px, transparent 1px)",
   backgroundSize: "56px 56px",
@@ -81,7 +81,7 @@ function LoginForm() {
           <span className="grid h-7 w-7 place-items-center rounded-md bg-accent"><Satellite size={15} /></span>OrbitPass
         </Link>
         <FadeIn className="relative">
-          <div className="mono mb-6 flex items-center gap-2 text-xs uppercase tracking-[.14em] text-muted"><span className="pulse-dot" />ORB-2026-DEMO · LIVE</div>
+          <div className="mono mb-6 flex items-center gap-2 text-xs uppercase tracking-[.14em] text-muted"><span className="pulse-dot" />MISSION CONTROL · LIVE</div>
           <h2 className="text-6xl font-semibold leading-[.98] tracking-tighter xl:text-8xl">Welcome to mission control<span className="text-accent">.</span></h2>
           <p className="mt-6 max-w-md text-muted">Book satellite passes on demand. Pay only for the frames that Proof of Downlink verifies.</p>
         </FadeIn>

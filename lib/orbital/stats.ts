@@ -1,67 +1,67 @@
-import { SATELLITES, STATIONS } from "./catalog";
+import "server-only";
+import { activeSatellites, activeStations } from "../server/assets";
 import { predictPasses, subPoint } from "./passes";
 import { tleFor } from "./tle";
 
+type Sat = { id: string; name: string; noradId: number; band: string };
+type Stn = { id: string; name: string; latitude: number; longitude: number; altitudeM: number; bands: string[]; pricePerPass: unknown };
+
+export interface PredictedPass {
+  id: string; satelliteId: string; satellite: string; norad: number; stationId: string; station: string;
+  band: string; aos: number; los: number; maxElDeg: number; durationS: number; price: number;
+}
+
+/** Real SGP4 predictions for every band-compatible satellite/station pair. Satellites without a current TLE are skipped. */
+export async function predictAll(sats: Sat[], stations: Stn[], from: number, to: number, minEl: number) {
+  const out: PredictedPass[] = [];
+  const unavailable: string[] = [];
+  const tles = await Promise.all(sats.map(s => tleFor(s.noradId)));
+  sats.forEach((sat, i) => {
+    const tle = tles[i];
+    if (!tle) { unavailable.push(sat.name); return; }
+    for (const st of stations) {
+      if (!st.bands.includes(sat.band)) continue;
+      for (const p of predictPasses(tle.rec, { lat: st.latitude, lon: st.longitude, altKm: st.altitudeM / 1000 }, from, to, minEl)) {
+        out.push({ id: `${sat.id}-${st.id}-${p.aos}`, satelliteId: sat.id, satellite: sat.name, norad: sat.noradId, stationId: st.id, station: st.name, band: sat.band, ...p, price: Number(st.pricePerPass) });
+      }
+    }
+  });
+  out.sort((a, b) => a.aos - b.aos);
+  return { passes: out, unavailable, tles };
+}
+
 export interface NetworkStats {
   generatedAt: number;
-  source: "celestrak" | "sample";
-  satellites: number; stations: number; pairs: number;
-  passes24h: number;               // passes >= 10 deg elevation, next 24 h, compatible sat/station pairs
-  contactMin24h: number;           // total predicted contact minutes (any elevation > 0), next 24 h
-  avgContactMinPerPair: number;    // per compatible satellite-station pair per day
-  contactPct: number;              // avg % of the day a satellite is in contact with a station
-  nextPass: { satellite: string; station: string; aos: number; maxElDeg: number } | null;
+  stations: number; satellites: number;
+  passes24h: number; contactMin24h: number;
   perStation: { id: string; name: string; passes: number; contactMin: number }[];
   live: { norad: number; name: string; lat: number; lon: number; altKm: number; speedKmS: number }[];
 }
 
 let cache: { at: number; v: NetworkStats } | undefined;
+let inflight: Promise<NetworkStats> | undefined;
 const TTL = 5 * 60_000;
 
-/** Everything here is computed from public TLEs with SGP4 — no fabricated figures. Cached for 5 min. */
-let inflight: Promise<NetworkStats> | undefined;
+/** Network-wide figures over ACTIVE, verified assets only. Cached 5 min per server instance. */
 export function getNetworkStats(): Promise<NetworkStats> {
   if (cache && Date.now() - cache.at < TTL) return Promise.resolve(cache.v);
   return (inflight ??= compute().finally(() => { inflight = undefined; }));
 }
 
 async function compute(): Promise<NetworkStats> {
-  const from = Date.now(), to = from + 24 * 3600_000;
-  let source: "celestrak" | "sample" = "celestrak";
-  const per = new Map(STATIONS.map(s => [s.id, { id: s.id, name: s.name, passes: 0, contactMin: 0 }]));
-  let passes24h = 0, contact = 0, pairs = 0;
-  let next: NetworkStats["nextPass"] = null;
+  const from = Date.now();
+  const [sats, stations] = await Promise.all([activeSatellites(), activeStations()]);
+  const { passes, tles } = await predictAll(sats, stations, from, from + 24 * 3600_000, 0);
+  const per = new Map(stations.map(s => [s.id, { id: s.id, name: s.name, passes: 0, contactMin: 0 }]));
+  let contact = 0;
+  for (const p of passes) { const r = per.get(p.stationId)!; r.contactMin += p.durationS / 60; contact += p.durationS / 60; if (p.maxElDeg >= 10) r.passes++; }
   const live: NetworkStats["live"] = [];
-
-  const tles = await Promise.all(SATELLITES.map(s => tleFor(s.norad)));
-  SATELLITES.forEach((sat, i) => {
-    const tle = tles[i];
-    if (tle.source === "sample") source = "sample";
-    const p = subPoint(tle.rec, from);
-    if (p) live.push({ norad: sat.norad, name: sat.name, lat: p.lat, lon: p.lon, altKm: p.altKm, speedKmS: p.speedKmS });
-    for (const st of STATIONS) {
-      if (!(st.bands as readonly string[]).includes(sat.band)) continue;
-      pairs++;
-      for (const ps of predictPasses(tle.rec, st, from, to, 0)) {
-        const row = per.get(st.id)!;
-        row.contactMin += ps.durationS / 60; contact += ps.durationS / 60;
-        if (ps.maxElDeg >= 10) {
-          row.passes++; passes24h++;
-          if (ps.aos > from && (!next || ps.aos < next.aos)) next = { satellite: sat.name, station: st.name, aos: ps.aos, maxElDeg: ps.maxElDeg };
-        }
-      }
-    }
-  });
-
-  const avg = pairs ? contact / pairs : 0;
+  sats.forEach((s, i) => { const t = tles[i]; const sp = t && subPoint(t.rec, from); if (sp) live.push({ norad: s.noradId, name: s.name, lat: sp.lat, lon: sp.lon, altKm: sp.altKm, speedKmS: sp.speedKmS }); });
   const v: NetworkStats = {
-    generatedAt: from, source, satellites: SATELLITES.length, stations: STATIONS.length, pairs,
-    passes24h, contactMin24h: Math.round(contact), avgContactMinPerPair: Math.round(avg * 10) / 10,
-    contactPct: Math.round((avg / 1440) * 1000) / 10, nextPass: next,
-    perStation: [...per.values()].map(r => ({ ...r, contactMin: Math.round(r.contactMin) })),
-    live,
+    generatedAt: from, stations: stations.length, satellites: sats.length,
+    passes24h: passes.filter(p => p.maxElDeg >= 10).length, contactMin24h: Math.round(contact),
+    perStation: [...per.values()].map(r => ({ ...r, contactMin: Math.round(r.contactMin) })), live,
   };
-  // Only cache real results; a sample-TLE fallback should be retried soon.
-  if (source === "celestrak") cache = { at: from, v };
+  cache = { at: from, v };
   return v;
 }

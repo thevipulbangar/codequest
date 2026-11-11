@@ -16,4 +16,14 @@ export const Badge = ({ children, tone = "muted" }: { children: React.ReactNode;
   return <span className={`mono rounded px-2 py-0.5 text-xs ${c}`}>{children}</span>;
 };
 
-export const fmtTime = (t: number) => new Date(t).toISOString().slice(5, 16).replace("T", " ") + "Z";
+const STATUS_TONE = { active: "ok", pending: "warn", rejected: "bad", suspended: "bad" } as const;
+const STATUS_TEXT = { active: "Active", pending: "Pending review", rejected: "Rejected", suspended: "Suspended" } as const;
+export const StatusPill = ({ status }: { status: keyof typeof STATUS_TONE }) => <Badge tone={STATUS_TONE[status]}>{STATUS_TEXT[status]}</Badge>;
+
+export const Empty = ({ title, children }: { title: string; children?: React.ReactNode }) => (
+  <div className="panel p-8 text-center"><div className="text-sm font-medium">{title}</div>{children && <div className="mt-1 text-sm text-muted">{children}</div>}</div>
+);
+
+export const inputCls = "mt-1.5 w-full rounded-lg border border-line bg-bg2 px-3 py-2.5 text-sm text-white outline-none transition focus:border-accent";
+
+export const fmtTime =(t: number) => new Date(t).toISOString().slice(5, 16).replace("T", " ") + "Z";
