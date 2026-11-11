@@ -47,3 +47,6 @@ next-env.d.ts
 # auto-generated tool instruction files
 AGENTS.md
 CLAUDE.md
+
+# Local Netlify folder
+.netlify
