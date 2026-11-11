@@ -3,19 +3,22 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { degreesToRadians, ecfToLookAngles, eciToEcf, gstime, propagate, radiansToDegrees, twoline2satrec } from "satellite.js";
 import { Badge, PageTitle, Stat, fmtTime } from "@/components/ui";
 import { useApi } from "@/lib/api-client";
 import { BOOKING_STATUS, type BookingView } from "@/lib/bookings-shared";
 
-type Track = { tle: { l1: string; l2: string } | null; station: { name: string; lat: number; lon: number; altKm: number } };
-type Look = { az: number; el: number; rangeKm: number };
+type Look = { t: number; az: number; el: number; rangeKm: number };
+type Track = { available: boolean; step: number; station: { name: string }; points: Look[] };
+const rad = (d: number) => (d * Math.PI) / 180;
 
-function lookAt(rec: ReturnType<typeof twoline2satrec>, st: Track["station"], t: number): Look | null {
-  const d = new Date(t), pv = propagate(rec, d);
-  if (!pv || typeof pv.position === "boolean" || !pv.position) return null;
-  const la = ecfToLookAngles({ latitude: degreesToRadians(st.lat), longitude: degreesToRadians(st.lon), height: st.altKm }, eciToEcf(pv.position as never, gstime(d)));
-  return { az: (radiansToDegrees(la.azimuth) + 360) % 360, el: radiansToDegrees(la.elevation), rangeKm: la.rangeSat };
+/** Position at time t, linearly interpolated from the server's 5 s SGP4 samples (null outside the window). */
+function lookAt(pts: Look[], t: number): Look | null {
+  if (!pts.length || t < pts[0].t || t > pts[pts.length - 1].t) return null;
+  const i = pts.findIndex(p => p.t >= t);
+  if (i <= 0) return pts[Math.max(0, i)];
+  const a = pts[i - 1], b = pts[i], f = (t - a.t) / (b.t - a.t);
+  let daz = b.az - a.az; if (daz > 180) daz -= 360; if (daz < -180) daz += 360; // wrap through north
+  return { t, az: (a.az + f * daz + 360) % 360, el: a.el + f * (b.el - a.el), rangeKm: a.rangeKm + f * (b.rangeKm - a.rangeKm) };
 }
 const clock = (ms: number) => { const s = Math.max(0, Math.round(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return `${h ? h + "h " : ""}${String(m).padStart(2, "0")}m ${String(x).padStart(2, "0")}s`; };
 
@@ -27,21 +30,15 @@ export default function LivePass() {
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
 
   const b = data?.booking;
-  const rec = useMemo(() => (track?.tle ? twoline2satrec(track.tle.l1, track.tle.l2) : null), [track]);
-  const path = useMemo(() => {
-    if (!rec || !b || !track) return [];
-    const pts: (Look & { t: number })[] = [];
-    for (let t = b.aos; t <= b.los; t += 5000) { const l = lookAt(rec, track.station, t); if (l) pts.push({ ...l, t }); }
-    return pts;
-  }, [rec, b, track]);
-  const cur = rec && track ? lookAt(rec, track.station, now) : null;
+  const path = useMemo(() => (track && b ? track.points.filter(p => p.t >= b.aos && p.t <= b.los) : []), [track, b]);
+  const cur = track ? lookAt(track.points, now) : null;
 
   if (data === undefined || track === undefined) return <div className="skeleton h-64" />;
   if (!b || !track) return <div className="panel p-8 text-sm text-muted">Booking not found.</div>;
 
   const phase = now < b.aos ? "before" : now <= b.los ? "during" : "after";
   const R = 130, C = 150;
-  const xy = (az: number, el: number) => { const r = ((90 - Math.max(0, el)) / 90) * R, a = degreesToRadians(az); return [C + r * Math.sin(a), C - r * Math.cos(a)] as const; };
+  const xy = (az: number, el: number) => { const r = ((90 - Math.max(0, el)) / 90) * R, a = rad(az); return [C + r * Math.sin(a), C - r * Math.cos(a)] as const; };
   const pathD = path.map((p, i) => `${i ? "L" : "M"}${xy(p.az, p.el).join(" ")}`).join(" ");
   const frames = b.receiptFrames ?? [];
   const chart = frames.map(f => ({ s: Math.round((f.t - b.aos) / 1000), rssi: f.rssi }));
@@ -53,12 +50,12 @@ export default function LivePass() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Badge tone={BOOKING_STATUS[b.status].tone}>{BOOKING_STATUS[b.status].label}</Badge>
         {phase === "during" && <span className="flex items-center gap-2 text-sm text-emerald-400"><span className="pulse-dot" />Satellite in view</span>}
-        {!track.tle && <Badge tone="warn">No current orbit available — position unavailable</Badge>}
+        {!track.available && <Badge tone="warn">No current orbit available — position unavailable</Badge>}
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label={phase === "before" ? "AOS in" : phase === "during" ? "LOS in" : "Pass ended"} value={phase === "before" ? clock(b.aos - now) : phase === "during" ? clock(b.los - now) : clock(now - b.los) + " ago"} />
-        <Stat label="Elevation now" value={cur ? `${cur.el.toFixed(1)}°` : "—"} tone={cur && cur.el > 0 ? "ok" : undefined} hint={cur && cur.el <= 0 ? "below the horizon" : undefined} />
+        <Stat label="Elevation now" value={cur ? `${cur.el.toFixed(1)}°` : "—"} tone={cur && cur.el > 0 ? "ok" : undefined} hint={!cur || cur.el <= 0 ? "below the horizon" : undefined} />
         <Stat label="Azimuth now" value={cur ? `${cur.az.toFixed(0)}°` : "—"} />
         <Stat label="Range now" value={cur ? `${Math.round(cur.rangeKm).toLocaleString("en-US")} km` : "—"} />
       </div>
@@ -74,7 +71,7 @@ export default function LivePass() {
             {path[0] && <circle cx={xy(path[0].az, path[0].el)[0]} cy={xy(path[0].az, path[0].el)[1]} r="3" fill="#22d3ee" />}
             {cur && cur.el > 0 && <circle cx={xy(cur.az, cur.el)[0]} cy={xy(cur.az, cur.el)[1]} r="6" fill="#fff" stroke="#22d3ee" strokeWidth="2"><animate attributeName="r" values="5;8;5" dur="1.5s" repeatCount="indefinite" /></circle>}
           </svg>
-          <p className="text-[11px] text-muted">Rings: 0°, 30°, 60° elevation · centre = overhead. Computed live with SGP4 from the current public orbit.</p>
+          <p className="text-[11px] text-muted">Rings: 0°, 30°, 60° elevation · centre = overhead. Computed with SGP4 from the current public orbit.</p>
         </div>
 
         <div className="panel p-4">
