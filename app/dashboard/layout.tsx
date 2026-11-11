@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Satellite, LayoutDashboard, Search, Radio, Antenna, LogOut, User, BadgeCheck, ClipboardCheck, Boxes, CalendarCheck, Wallet, Scale } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { EmailBanner } from "@/components/EmailBanner";
@@ -42,7 +42,14 @@ const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner
 const AREA = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin" } as const;
 const ROLE_LABEL = { operator: "Satellite operator", owner: "Ground station owner", admin: "Admin" } as const;
 
+const Loading = () => <div className="grid min-h-screen place-items-center"><div className="skeleton h-10 w-48" /></div>;
+
+/** URL hooks need a Suspense boundary so dynamic routes (e.g. /dashboard/live-pass/[id]) can prerender. */
 export default function DashLayout({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<Loading />}><DashShell>{children}</DashShell></Suspense>;
+}
+
+function DashShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const session = useSession();
@@ -65,7 +72,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  if (!session) return <div className="grid min-h-screen place-items-center"><div className="skeleton h-10 w-48" /></div>;
+  if (!session) return <Loading />;
 
   const initials = session.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const badges = session.role === "admin" ? [] : badgeStates(session.role === "operator" ? "satellite" : "station", vstate?.setup ?? DEFAULT_SETUP, vstate?.subs ?? {});

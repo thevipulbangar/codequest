@@ -22,6 +22,14 @@ export function elevationDeg(rec: Rec, site: Site, t: number): number | null {
   return radiansToDegrees(ecfToLookAngles(obs, ecf).elevation);
 }
 
+/** Azimuth / elevation (deg) and range (km) of the satellite seen from a site at time t. */
+export function lookAngles(rec: Rec, site: Site, t: number) {
+  const s = state(rec, t);
+  if (!s) return null;
+  const la = ecfToLookAngles({ latitude: degreesToRadians(site.lat), longitude: degreesToRadians(site.lon), height: site.altKm ?? 0 }, eciToEcf(s.pv.position as never, s.gmst));
+  return { az: (radiansToDegrees(la.azimuth) + 360) % 360, el: radiansToDegrees(la.elevation), rangeKm: la.rangeSat };
+}
+
 /** Sub-satellite point + altitude + speed at time t. */
 export function subPoint(rec: Rec, t: number) {
   const s = state(rec, t);
