@@ -82,39 +82,32 @@ OrbitPass is a pay-per-pass marketplace connecting small-satellite operators wit
 
 ## 9. Status — done vs remaining
 
-### Done — live on https://orbitpasss.netlify.app
+### Done — live on https://orbitpasss.netlify.app (commit `794ed49` and later)
 - Landing page: 3D globe, liquid-glass nav, animations, responsive layout, new logo, live counts of verified stations and satellites.
-- Login: satellite operator / station owner tabs, unlisted admin login (`/login?as=admin`), show/hide password, real accounts in Supabase, secure sessions.
+- Login: satellite operator / station owner tabs, unlisted admin login (`/login?as=admin`), show/hide password, real accounts in Supabase, secure sessions; change / forgot / reset password; email confirmation (needs email set up).
 - Owner verification: encrypted document uploads, three badges, admin review and approval.
-- Satellites and stations: owners register them; live only after the owner is verified **and** an admin approves the asset.
-- Pass finder: real SGP4 orbit predictions for your own approved satellites over approved stations.
-- Production cleanup: no demo/sample data, security headers, faster session handling.
+- Satellites and stations: owners register them; live only after the owner is verified **and** an admin approves the asset. Station signing key and blocked-time calendar.
+- Pass finder: real SGP4 predictions for your own approved satellites over approved stations; **Book** button; plain-English search.
+- Booking with credits escrow, cancel, refund when the station doesn't deliver, **automatic expiry** of undelivered bookings (checked on page loads, at most once a minute).
+- Proof of Downlink: manifest before the pass, signed receipt after, automatic verification and pro-rata payout; invalid receipts refused.
+- Operator wallet; station earnings and reliability score; disputes; live pass view (countdown, sky track, signal chart); notifications bell; admin overview with platform stats and credit grants.
+- Terms and Privacy pages; CLI tools for signing key, manifest and receipt; GitHub Actions checks; README and this file.
+- Netlify environment variables complete, including `APP_URL` and `PLATFORM_FEE_BPS`.
+- **Verified on the live site:** the 49-step booking-lifecycle test passed (settlement 86.48 / 7.52 / 6.00 to the cent, tamper refusal, cancel, expiry, dispute clawback, search, notifications, password change), and every page returns 200.
 
-### Done — built and tested, not yet deployed
-- Booking with credits escrow, cancel, refund when the station doesn't deliver.
-- Proof of Downlink: manifest before the pass, signed receipt after, automatic verification and pro-rata payout.
-- Operator wallet; station earnings and reliability score.
-- Station signing key and blocked-time (availability) calendar.
-- Disputes raised by either party and resolved by admins.
-- Live pass view: countdown, sky track, signal chart.
-- Notifications bell; admin overview with platform stats and credit grants.
-- Plain-English pass search.
-- Change password, forgot/reset password, email confirmation.
-- Terms and Privacy pages; CLI tools for signing key, manifest and receipt.
-- Automated checks on every push (GitHub Actions); README and this file.
-- A 49-step test of the full booking lifecycle passed against the real database.
+### Fixed along the way (worth knowing)
+- Receipts with a bad signature used to settle at 0% — now refused and resubmittable.
+- The live pass page bundled the orbit library in the browser, which hung the production build (Netlify timed out on commit `93a71dd`). The sky track is now computed on the server.
 
 ### Remaining — can be done without the owner
-1. Finish the production build, deploy the batch above, and test it on the live site.
-2. Add `APP_URL` and `PLATFORM_FEE_BPS` to Netlify environment variables.
-3. Expire undelivered bookings automatically (today the operator clicks "Claim refund").
-4. Click through the new pages in a real browser on desktop and phone.
+1. Click through the new pages in a real browser on desktop and phone (so far verified through the API and page loads, not visually).
+2. Optional: a scheduled function for auto-expiry if the site has no visitors for days (today expiry runs when pages are loaded).
 
 ### Remaining — needs the owner's accounts or decisions
-5. **Speed:** create a Supabase project in **East US (Ohio)**, next to the Netlify functions; then migrate data, recreate the bucket and update env vars. Each DB query is ~1 s today.
-6. **Email:** Resend account + verified domain; set `RESEND_API_KEY` and `EMAIL_FROM` (password reset and confirmations are off until then).
-7. **Real payments:** choose Razorpay, Stripe or on-chain; add withdrawals for station owners. Today admins add credits after off-platform payment.
-8. **KYC provider** for individual owners' identity and selfie checks (manual reviewer step today).
-9. **Legal review** of the template Terms and Privacy pages.
-10. **Custom domain** instead of `orbitpasss.netlify.app`.
-11. **Monitoring:** error tracking (e.g. Sentry) and an uptime monitor on `/api/health`; confirm Supabase backups for the plan.
+3. **Speed:** create a Supabase project in **East US (Ohio)**, next to the Netlify functions; then migrate data, recreate the bucket and update env vars. Each DB query is ~1 s today.
+4. **Email:** Resend account + verified domain; set `RESEND_API_KEY` and `EMAIL_FROM` (password reset and confirmations are off until then).
+5. **Real payments:** choose Razorpay, Stripe or on-chain; add withdrawals for station owners. Today admins add credits after off-platform payment.
+6. **KYC provider** for individual owners' identity and selfie checks (manual reviewer step today).
+7. **Legal review** of the template Terms and Privacy pages.
+8. **Custom domain** instead of `orbitpasss.netlify.app`.
+9. **Monitoring:** error tracking (e.g. Sentry) and an uptime monitor on `/api/health`; confirm Supabase backups for the plan.
