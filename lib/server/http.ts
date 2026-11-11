@@ -1,5 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
+import { unstable_rethrow } from "next/navigation";
 import type { z } from "zod";
 import { HttpError } from "./auth";
 
@@ -8,6 +9,7 @@ export function handle<A extends unknown[]>(fn: (...a: A) => Promise<Response>) 
   return async (...a: A) => {
     try { return await fn(...a); }
     catch (e) {
+      unstable_rethrow(e); // let Next's own control-flow errors (dynamic/prerender signals) through
       if (e instanceof HttpError) return NextResponse.json({ error: e.message }, { status: e.status });
       console.error("[api]", e);
       return NextResponse.json({ error: "Internal error" }, { status: 500 });

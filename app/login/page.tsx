@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowRight, Loader2, Satellite } from "lucide-react";
+import { Antenna, ArrowRight, Loader2, Satellite, ShieldCheck } from "lucide-react";
 import { signIn, signUp } from "@/lib/session";
 import { FadeIn } from "@/components/Motion";
 
@@ -14,11 +14,12 @@ const Schema = z.object({
   password: z.string().min(8, "At least 8 characters").max(72),
 });
 
-type Role = "operator" | "owner";
-const ROLES: { id: Role; title: string }[] = [
-  { id: "operator", title: "Satellite operator" },
-  { id: "owner", title: "Station owner" },
-];
+type Role = "operator" | "owner" | "admin";
+const TABS = [
+  { id: "operator", title: "Satellite operator", icon: Satellite, blurb: "Find and book passes for your satellite." },
+  { id: "owner", title: "Station owner", icon: Antenna, blurb: "List your ground station and earn per pass." },
+] as const;
+const NOUN = { operator: "satellite operator", owner: "station owner", admin: "admin" } as const;
 const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin" } as const;
 
 const META = [["NETWORK", "Demo · testnet"], ["STATIONS", "5 sites"], ["DATA", "Sample + live TLE"]];
@@ -30,9 +31,16 @@ const gridBg = {
 } as const;
 
 export default function Login() {
+  // useSearchParams needs a Suspense boundary for prerendering.
+  return <Suspense><LoginForm /></Suspense>;
+}
+
+function LoginForm() {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [role, setRole] = useState<Role>("operator");
+  const q = useSearchParams();
+  const initialRole: Role = q.get("as") === "owner" ? "owner" : q.get("as") === "admin" ? "admin" : "operator";
+  const [mode, setMode] = useState<"login" | "signup">(q.get("mode") === "signup" && initialRole !== "admin" ? "signup" : "login");
+  const [role, setRole] = useState<Role>(initialRole);
   const [f, setF] = useState({ name: "", email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -48,8 +56,8 @@ export default function Login() {
     setBusy(true);
     try {
       const user = mode === "signup"
-        ? await signUp({ name: r.data.name!, email: r.data.email, password: r.data.password, role })
-        : await signIn(r.data.email, r.data.password);
+        ? await signUp({ name: r.data.name!, email: r.data.email, password: r.data.password, role: role as "operator" | "owner" })
+        : await signIn(r.data.email, r.data.password, role);
       toast.success(mode === "signup" ? "Account created" : "Signed in");
       router.push(HOME[user.role]);
     } catch (e) {
@@ -86,20 +94,23 @@ export default function Login() {
       <section className="flex items-center px-6 py-12 sm:px-14 xl:px-24">
         <FadeIn delay={0.15} className="w-full max-w-md">
           <Link href="/" className="mono mb-10 flex items-center gap-2 text-sm font-semibold uppercase tracking-[.2em] lg:hidden"><span className="grid h-7 w-7 place-items-center rounded-md bg-accent"><Satellite size={15} /></span>OrbitPass</Link>
-          <div className="mono text-[11px] uppercase tracking-[.14em] text-muted">Authentication</div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight">{mode === "login" ? "Sign in to OrbitPass" : "Create your account"}</h1>
-          <p className="mt-2 text-sm text-muted">{mode === "login" ? "Pick up where your last pass left off." : "Start booking passes in minutes."}</p>
-
-          {mode === "signup" && <div className="mt-7" role="group" aria-label="Role">
-            <span className={lbl}>Role</span>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {ROLES.map(({ id, title }) => (
-                <button type="button" key={id} onClick={() => setRole(id)} aria-pressed={role === id}
-                  className={`rounded-md border px-3 py-2.5 text-sm transition ${role === id ? "border-accent bg-accent/10 text-white" : "border-line text-muted hover:bg-white/5"}`}>{title}</button>
+          {role !== "admin" ? (
+            <div role="tablist" aria-label="Account type" className="grid grid-cols-2 gap-2">
+              {TABS.map(({ id, title, icon: Icon, blurb }) => (
+                <button type="button" role="tab" key={id} aria-selected={role === id} onClick={() => { setRole(id); setErrors({}); }}
+                  className={`rounded-lg border p-3 text-left transition ${role === id ? "border-accent bg-accent/10" : "border-line hover:bg-white/5"}`}>
+                  <span className={`flex items-center gap-2 text-sm font-medium ${role === id ? "text-white" : "text-muted"}`}><Icon size={15} className={role === id ? "text-cyan" : ""} />{title}</span>
+                  <span className="mt-1 block text-xs text-muted">{blurb}</span>
+                </button>
               ))}
             </div>
-            <p className="mt-2 text-xs text-muted">Your role is fixed once the account is created.</p>
-          </div>}
+          ) : (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-300"><ShieldCheck size={15} />Platform admin sign-in</div>
+          )}
+
+          <div className="mono mt-7 text-[11px] uppercase tracking-[.14em] text-muted">Authentication</div>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight">{mode === "login" ? `Sign in as ${role === "admin" ? "an" : "a"} ${NOUN[role]}` : `Create a ${NOUN[role]} account`}</h1>
+          <p className="mt-2 text-sm text-muted">{role === "admin" ? "Review owner verifications and approvals." : mode === "login" ? "Pick up where your last pass left off." : "Your account type is fixed once the account is created."}</p>
 
           <form onSubmit={submit} className="mt-6 space-y-5" noValidate>
             {mode === "signup" && <label className={lbl}>Name<input className={inp} placeholder="Your name" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} autoComplete="name" />{err("name")}</label>}
@@ -112,6 +123,7 @@ export default function Login() {
             {errors.form && <p role="alert" className="text-sm normal-case tracking-normal text-red-400">{errors.form}</p>}
           </form>
 
+          {role !== "admin" && <>
           <div className="my-6 flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
           <button type="button" onClick={() => toast.info("Google sign-in isn’t enabled yet")} className="flex w-full items-center justify-center gap-3 rounded-md border border-line py-3 text-sm font-medium transition hover:bg-white/5">
             <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" /><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z" /><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 010-9.4l-7.9-6.1a24 24 0 000 21.6l7.9-6.1z" /><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" /></svg>
@@ -120,7 +132,14 @@ export default function Login() {
 
           <p className="mt-6 text-sm text-muted">
             {mode === "login" ? "Don’t have an account?" : "Already have an account?"}{" "}
-            <button onClick={() => { setMode(mode === "login" ? "signup" : "login"); setErrors({}); }} className="font-medium text-white underline underline-offset-4">{mode === "login" ? "Create one" : "Sign in"}</button>
+            <button onClick={() => { setMode(mode === "login" ? "signup" : "login"); setErrors({}); }} className="font-medium text-white underline underline-offset-4">{mode === "login" ? `Create a ${NOUN[role]} account` : "Sign in"}</button>
+          </p>
+          </>}
+
+          <p className="mt-8 border-t border-line pt-4 text-xs text-muted">
+            {role === "admin"
+              ? <button onClick={() => { setRole("operator"); setErrors({}); }} className="underline underline-offset-4 hover:text-white">← Back to operator / station owner sign-in</button>
+              : <>Platform admin? <button onClick={() => { setRole("admin"); setMode("login"); setErrors({}); }} className="underline underline-offset-4 hover:text-white">Admin sign-in</button></>}
           </p>
         </FadeIn>
       </section>
