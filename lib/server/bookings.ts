@@ -89,6 +89,31 @@ export async function refundFull(b: Booking, status: "cancelled" | "expired", no
   }, TX);
 }
 
+/** Expire one overdue booking: full refund + tell the station. Shared by the manual claim and the sweep. */
+export async function expireBooking(b: Booking & { satellite: { name: string }; station: { ownerId: string } }) {
+  await refundFull(b, "expired", "No verified receipt within 24 h");
+  void notify(b.station.ownerId, "Booking expired", `No verified receipt for the ${b.satellite.name} pass; the operator was refunded. This counts against reliability.`, "/dashboard/station-owner/bookings");
+  void notify(b.operatorId, "Booking refunded", `${b.satellite.name}: no verified receipt within 24 h, escrow returned.`, "/dashboard/operator/bookings");
+}
+
+let lastSweep = 0;
+/**
+ * Auto-expire every open booking past its receipt deadline. Called from read paths (bookings list,
+ * wallet, reliability) so refunds happen without the operator clicking "Claim refund".
+ * NOTE: runs on reads, at most once a minute per instance; add a scheduled function if nobody reads for days.
+ */
+export async function expireOverdue() {
+  if (Date.now() - lastSweep < 60_000) return;
+  lastSweep = Date.now();
+  const due = await db.booking.findMany({
+    where: { status: { in: [...OPEN_STATUSES] }, los: { lt: new Date(Date.now() - RECEIPT_DEADLINE_MS) } },
+    include: { satellite: { select: { name: true } }, station: { select: { ownerId: true } } },
+    take: 50,
+  });
+  // A booking settled/claimed meanwhile throws 409 from the status guard; skip it.
+  await Promise.all(due.map(b => expireBooking(b).catch(() => {})));
+}
+
 /**
  * Verify the station's signed receipt against the committed manifest and settle pro-rata.
  * All money maths is integer cents via the tested settle(); escrow = payout + fee + refund exactly.
@@ -124,6 +149,7 @@ export async function verifyAndSettle(b: Full, receipt: Receipt) {
 /** Transparent reliability score (0-100) per station from settled history. null = no completed passes yet. */
 export async function reliability(stationIds: string[]) {
   if (!stationIds.length) return new Map<string, { score: number | null; completed: number; failed: number; avgDelivery: number | null; disputesLost: number }>();
+  await expireOverdue();
   const [settled, expired, lost] = await Promise.all([
     db.booking.groupBy({ by: ["stationId"], where: { stationId: { in: stationIds }, status: "settled" }, _count: true, _avg: { deliveryBps: true } }),
     db.booking.groupBy({ by: ["stationId"], where: { stationId: { in: stationIds }, status: "expired" }, _count: true }),

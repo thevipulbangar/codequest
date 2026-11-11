@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { Badge, Empty, PageTitle, StatusPill, inputCls } from "@/components/ui";
 import { VerificationGate } from "@/components/VerificationGate";
+import { StationManage } from "@/components/StationManage";
 import { api, revalidate, useApi } from "@/lib/api-client";
 import { BANDS, PROTOCOLS, StationInput, type OwnedStation } from "@/lib/assets";
 
@@ -66,6 +67,7 @@ export default function MyStations() {
               <div className="mt-2 flex flex-wrap gap-1.5">{s.bands.map(b => <Badge key={b}>{b}</Badge>)}{s.protocols.map(p => <Badge key={p}>{p}</Badge>)}</div>
               <div className="mono mt-2 text-sm">{s.pricePerPass.toFixed(2)} <span className="text-xs text-muted">per pass</span></div>
               {s.reviewNote && <div className="mt-2 text-xs text-amber-300">Reviewer: {s.reviewNote}</div>}
+              <StationManage s={s} />
             </div>
           ))}
         </div>

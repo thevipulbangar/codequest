@@ -3,7 +3,9 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Satellite, LayoutDashboard, Search, Radio, Antenna, LogOut, User, BadgeCheck, ClipboardCheck, Boxes } from "lucide-react";
+import { Satellite, LayoutDashboard, Search, Radio, Antenna, LogOut, User, BadgeCheck, ClipboardCheck, Boxes, CalendarCheck, Wallet, Scale } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
+import { EmailBanner } from "@/components/EmailBanner";
 import { signOut, useSession } from "@/lib/session";
 import { BADGE_LABEL, badgeStates, DEFAULT_SETUP } from "@/lib/verification/requirements";
 import { useVerification } from "@/lib/verification/store";
@@ -13,21 +15,31 @@ const NAV = {
   operator: [
     ["/dashboard/operator", "Overview", LayoutDashboard],
     ["/dashboard/operator/find-pass", "Find Passes", Search],
+    ["/dashboard/operator/bookings", "My Bookings", CalendarCheck],
     ["/dashboard/operator/stations", "Stations", Radio],
     ["/dashboard/operator/satellites", "My Satellites", Satellite],
+    ["/dashboard/operator/wallet", "Wallet", Wallet],
+    ["/dashboard/disputes", "Disputes", Scale],
     ["/dashboard/verification", "Owner verification", BadgeCheck],
   ],
   owner: [
     ["/dashboard/station-owner", "Overview", LayoutDashboard],
     ["/dashboard/station-owner/stations", "My Stations", Antenna],
+    ["/dashboard/station-owner/bookings", "Bookings", CalendarCheck],
+    ["/dashboard/station-owner/earnings", "Earnings", Wallet],
+    ["/dashboard/disputes", "Disputes", Scale],
     ["/dashboard/verification", "Owner verification", BadgeCheck],
   ],
   admin: [
+    ["/dashboard/admin/overview", "Overview", LayoutDashboard],
     ["/dashboard/admin", "Verification review", ClipboardCheck],
     ["/dashboard/admin/assets", "Asset review", Boxes],
+    ["/dashboard/disputes", "Disputes", Scale],
   ],
 } as const;
-const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin" } as const;
+const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin/overview" } as const;
+/** Role-private URL areas (shared pages like /dashboard/disputes are outside these). */
+const AREA = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin" } as const;
 const ROLE_LABEL = { operator: "Satellite operator", owner: "Ground station owner", admin: "Admin" } as const;
 
 export default function DashLayout({ children }: { children: React.ReactNode }) {
@@ -42,7 +54,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (session === null) router.replace("/login");
     else if (session) {
-      const foreign = Object.entries(HOME).filter(([r]) => r !== session.role).map(([, h]) => h);
+      const foreign = Object.entries(AREA).filter(([r]) => r !== session.role).map(([, h]) => h);
       if (foreign.some(h => path.startsWith(h))) router.replace(HOME[session.role]);
     }
   }, [session, path, router]);
@@ -74,6 +86,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
         <header className="glass glass-solid flex items-center justify-between px-4 py-3 pb-5 sm:px-6">
           <span className="text-sm text-muted">{ROLE_LABEL[session.role]}</span>
           <div className="flex items-center gap-4">
+            <NotificationBell />
             <div className="relative" ref={menu}>
               <button onClick={() => setOpen(!open)} aria-haspopup="menu" aria-expanded={open} className="flex items-center gap-2 rounded-full border border-line bg-card py-1 pl-1 pr-3 text-sm hover:bg-white/5">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-accent text-xs font-semibold">{initials}</span>
@@ -99,6 +112,7 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
             <Link key={href} href={href} className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm ${path === href ? "bg-white/8 text-white" : "text-muted"}`}><Icon size={15} />{label}</Link>
           ))}
         </nav>
+        <EmailBanner />
         <div className="p-4 sm:p-6">{children}</div>
       </div>
     </div>

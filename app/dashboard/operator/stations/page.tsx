@@ -27,6 +27,9 @@ export default function Stations() {
             <div className="flex items-start justify-between gap-2"><div><div className="font-medium">{s.name}</div><div className="text-sm text-muted">{s.country} · {s.latitude.toFixed(2)}°, {s.longitude.toFixed(2)}°</div></div><Badge tone="ok"><BadgeCheck size={12} className="mr-1 inline" />verified</Badge></div>
             <div className="mt-3 text-sm text-slate-300">{s.antennaType} · {s.antennaSizeM} m</div>
             <div className="mt-1 text-xs text-muted">Operated by {s.ownerName}</div>
+            <div className="mt-2 text-xs">{s.reliability?.score != null
+              ? <>Reliability <b className="text-emerald-400">{s.reliability.score}/100</b> · {s.reliability.completed} passes · {s.reliability.avgDelivery?.toFixed(1)}% avg delivery</>
+              : <span className="text-muted">New station — no completed passes yet</span>}</div>
             <div className="mt-3 flex flex-wrap gap-1.5">{s.bands.map(b => <Badge key={b}>{b}</Badge>)}{s.protocols.map(p => <Badge key={p}>{p}</Badge>)}</div>
             <div className="mono mt-4 border-t border-line pt-3 text-sm">{s.pricePerPass.toFixed(2)} <span className="text-muted">/ pass</span></div>
           </div>

@@ -4,12 +4,17 @@ import { BadgeCheck, ShieldAlert } from "lucide-react";
 import { PageTitle, Stat, StatusPill } from "@/components/ui";
 import { useApi } from "@/lib/api-client";
 import type { OwnedStation } from "@/lib/assets";
+import { money, type BookingView } from "@/lib/bookings-shared";
 import { BADGE_LABEL, DEFAULT_SETUP, badgeStates } from "@/lib/verification/requirements";
 import { useVerification } from "@/lib/verification/store";
 
 export default function StationOwner() {
   const v = useVerification();
   const st = useApi<{ stations: OwnedStation[] }>("/api/stations");
+  const bookings = useApi<{ bookings: BookingView[] }>("/api/bookings");
+  const wallet = useApi<{ balance: number }>("/api/wallet");
+  const settled = bookings?.bookings.filter(b => b.status === "settled") ?? [];
+  const pending = bookings?.bookings.filter(b => b.can.submitReceipt).length ?? 0;
   const setup = v?.setup ?? DEFAULT_SETUP;
   const badges = badgeStates("station", setup, v?.subs ?? {});
   const approved = v?.decision?.status === "approved";
@@ -22,8 +27,8 @@ export default function StationOwner() {
         {v === undefined || st === undefined ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-24" />) : <>
           <Stat label="Verification" value={approved ? "Approved" : `${badges.filter(b => b.earned).length}/3 badges`} tone={approved ? "ok" : "warn"} />
           <Stat label="My stations" value={String(st?.stations.length ?? 0)} hint={`${active} live in marketplace`} />
-          <Stat label="Completed passes" value="0" />
-          <Stat label="Earnings" value="0.00" hint="no settled passes yet" />
+          <Stat label="Settled passes" value={String(settled.length)} hint={pending ? `${pending} receipt(s) to submit` : undefined} tone={pending ? "warn" : undefined} />
+          <Stat label="Earned credits" value={money(wallet?.balance ?? 0)} />
         </>}
       </div>
 

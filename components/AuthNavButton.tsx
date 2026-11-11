@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useSession } from "@/lib/session";
 
-export const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin" } as const;
+export const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin/overview" } as const;
 
 /** Landing-page nav button: "Open dashboard" when signed in, "Get started" otherwise. */
 export function AuthNavButton() {
