@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Antenna, ArrowRight, Loader2, Satellite, ShieldCheck } from "lucide-react";
+import { Antenna, ArrowRight, Eye, EyeOff, Loader2, Satellite, ShieldCheck } from "lucide-react";
 import { signIn, signUp, useSession } from "@/lib/session";
 import { FadeIn } from "@/components/Motion";
 
@@ -47,6 +47,7 @@ function LoginForm() {
   const [f, setF] = useState({ name: "", email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -118,7 +119,15 @@ function LoginForm() {
           <form onSubmit={submit} className="mt-6 space-y-5" noValidate>
             {mode === "signup" && <label className={lbl}>Name<input className={inp} placeholder="Your name" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} autoComplete="name" />{err("name")}</label>}
             <label className={lbl}>Email<input type="email" className={inp} placeholder="you@company.com" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} autoComplete="email" />{err("email")}</label>
-            <label className={lbl}>Password<input type="password" className={inp} placeholder="••••••••" value={f.password} onChange={e => setF({ ...f, password: e.target.value })} autoComplete={mode === "login" ? "current-password" : "new-password"} />{err("password")}</label>
+            <label className={lbl}>Password
+              <span className="relative block">
+                <input type={showPw ? "text" : "password"} className={`${inp} pr-12`} placeholder="••••••••" value={f.password} onChange={e => setF({ ...f, password: e.target.value })} autoComplete={mode === "login" ? "current-password" : "new-password"} />
+                <button type="button" onClick={() => setShowPw(v => !v)} aria-label={showPw ? "Hide password" : "Show password"} aria-pressed={showPw} title={showPw ? "Hide password" : "Show password"}
+                  className="absolute right-2 top-1/2 mt-1 -translate-y-1/2 rounded-md p-2 text-muted transition hover:bg-white/5 hover:text-white">
+                  {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </span>
+              {err("password")}</label>
             {mode === "login" && <div className="text-right"><button type="button" onClick={() => toast.info("Password reset by email isn’t enabled yet — contact support")} className="text-sm text-muted underline underline-offset-4 hover:text-white">Forgot password?</button></div>}
             <button disabled={busy} className="mono flex w-full items-center justify-center gap-2 rounded-md bg-accent py-4 text-sm font-semibold uppercase tracking-[.14em] shadow-[0_3px_0_#1d4ed8] transition hover:bg-blue-500 active:translate-y-px active:shadow-none disabled:opacity-60">
               {busy ? <Loader2 size={15} className="animate-spin" /> : null}{mode === "login" ? "Sign in" : "Create account"}{!busy && <ArrowRight size={15} />}
