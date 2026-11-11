@@ -11,9 +11,27 @@ const tokenHash = (t: string) => createHash("sha256").update(t).digest("hex");
 export type PublicUser = Omit<User, "passwordHash">;
 export const publicUser = ({ passwordHash: _ph, ...u }: User): PublicUser => u; // eslint-disable-line @typescript-eslint/no-unused-vars
 
-export async function startSession(userId: string) {
+/**
+ * Per-instance cache of verified sessions, so most requests skip the session DB lookup.
+ * NOTE: a logout or role change is applied instantly on the instance that handled it; other warm instances
+ * may honour the old session for up to CACHE_MS. Lower CACHE_MS (or set 0) if that window matters.
+ */
+const CACHE_MS = 60_000;
+const sessionCache = new Map<string, { user: User; expiresAt: number; cachedAt: number }>();
+const remember = (hash: string, user: User, expiresAt: number) => {
+  if (sessionCache.size > 5000) sessionCache.clear(); // bound memory
+  sessionCache.set(hash, { user, expiresAt, cachedAt: Date.now() });
+};
+/** Drop cached sessions for a user (after profile/role changes). */
+export function forgetUser(userId: string) {
+  for (const [k, v] of sessionCache) if (v.user.id === userId) sessionCache.delete(k);
+}
+
+export async function startSession(user: User) {
   const token = randomBytes(32).toString("base64url");
-  await db.session.create({ data: { tokenHash: tokenHash(token), userId, expiresAt: new Date(Date.now() + TTL_MS) } });
+  const hash = tokenHash(token), expiresAt = Date.now() + TTL_MS;
+  await db.session.create({ data: { tokenHash: hash, userId: user.id, expiresAt: new Date(expiresAt) } });
+  remember(hash, user, expiresAt);
   (await cookies()).set(COOKIE, token, {
     httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: TTL_MS / 1000,
   });
@@ -22,15 +40,19 @@ export async function startSession(userId: string) {
 export async function endSession() {
   const jar = await cookies();
   const t = jar.get(COOKIE)?.value;
-  if (t) await db.session.deleteMany({ where: { tokenHash: tokenHash(t) } });
+  if (t) { const h = tokenHash(t); sessionCache.delete(h); await db.session.deleteMany({ where: { tokenHash: h } }); }
   jar.delete(COOKIE);
 }
 
 export async function currentUser(): Promise<User | null> {
   const t = (await cookies()).get(COOKIE)?.value;
   if (!t) return null;
-  const s = await db.session.findUnique({ where: { tokenHash: tokenHash(t) }, include: { user: true } });
-  if (!s || s.expiresAt < new Date()) return null;
+  const hash = tokenHash(t), now = Date.now();
+  const hit = sessionCache.get(hash);
+  if (hit && now - hit.cachedAt < CACHE_MS && hit.expiresAt > now) return hit.user;
+  const s = await db.session.findUnique({ where: { tokenHash: hash }, include: { user: true }, relationLoadStrategy: "join" });
+  if (!s || s.expiresAt.getTime() < now) { sessionCache.delete(hash); return null; }
+  remember(hash, s.user, s.expiresAt.getTime());
   return s.user;
 }
 

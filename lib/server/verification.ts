@@ -38,7 +38,7 @@ export function toState(u: User, v: (Verification & { submissions: DbSubmission[
 }
 
 export const loadVerification = (userId: string) =>
-  db.verification.findUnique({ where: { userId }, include: { submissions: true } });
+  db.verification.findUnique({ where: { userId }, include: { submissions: true }, relationLoadStrategy: "join" });
 
 export const ensureVerification = (userId: string) =>
   db.verification.upsert({ where: { userId }, create: { userId, setup: { ...DEFAULT_SETUP } }, update: {} });

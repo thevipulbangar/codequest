@@ -15,8 +15,9 @@ const Schema = z.object({
 export const POST = handle(async (req: Request) => {
   rateLimit(`signup:${clientIp(req)}`, 5, 3600_000);
   const b = await body(req, Schema);
-  if (await db.user.findUnique({ where: { email: b.email } })) throw new HttpError(409, "An account with this email already exists");
-  const user = await db.user.create({ data: { name: b.name, email: b.email, role: b.role, passwordHash: await hashPassword(b.password) } });
-  await startSession(user.id);
+  // One round trip: rely on the unique email constraint instead of a separate lookup.
+  const user = await db.user.create({ data: { name: b.name, email: b.email, role: b.role, passwordHash: await hashPassword(b.password) } })
+    .catch((e: { code?: string }) => { if (e?.code === "P2002") throw new HttpError(409, "An account with this email already exists"); throw e; });
+  await startSession(user);
   return NextResponse.json({ user: publicUser(user) }, { status: 201 });
 });
