@@ -157,7 +157,7 @@ export default function Home() {
         <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">OrbitPass makes every pass count.</h2>
         <div className="mt-8 flex flex-wrap justify-center gap-3"><Btn href="/login" primary>Get started <ArrowRight size={16} /></Btn><Btn href="/login?as=owner&mode=signup">List your station</Btn></div>
       </section>
-      <footer className="border-t border-line px-6 py-8 text-center text-xs text-muted">© 2026 OrbitPass</footer>
+      <footer className="border-t border-line px-6 py-8 text-center text-xs text-muted">© 2026 OrbitPass · <Link href="/terms" className="hover:text-white">Terms</Link> · <Link href="/privacy" className="hover:text-white">Privacy</Link></footer>
     </main>
   );
 }

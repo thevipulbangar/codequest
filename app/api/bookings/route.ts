@@ -5,13 +5,14 @@ import { db } from "@/lib/server/db";
 import { HttpError, requireUser } from "@/lib/server/auth";
 import { body, handle, rateLimit } from "@/lib/server/http";
 import { activeSatellites, activeStations } from "@/lib/server/assets";
-import { MIN_LEAD_MS, assertStationFree, bookingInclude, bookingView, feeBps, findPassNear } from "@/lib/server/bookings";
+import { MIN_LEAD_MS, assertStationFree, bookingInclude, bookingView, expireOverdue, feeBps, findPassNear } from "@/lib/server/bookings";
 import { TX, debit } from "@/lib/server/ledger";
 import { notify } from "@/lib/server/notify";
 
 /** Bookings visible to the caller: operator = own, station owner = on own stations, admin = all. */
 export const GET = handle(async () => {
   const u = await requireUser();
+  await expireOverdue();
   const where = u.role === "operator" ? { operatorId: u.id } : u.role === "owner" ? { station: { ownerId: u.id } } : {};
   const list = await db.booking.findMany({ where, include: bookingInclude, orderBy: { aos: "desc" }, take: 200, relationLoadStrategy: "join" });
   return NextResponse.json({ bookings: list.map(b => bookingView(b, u)) });

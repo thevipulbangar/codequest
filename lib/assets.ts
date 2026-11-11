@@ -31,14 +31,16 @@ export const StationInput = z.object({
 });
 
 /** Public shapes (safe to send to any client). */
+export interface Reliability { score: number | null; completed: number; failed: number; avgDelivery: number | null; disputesLost: number }
 export interface PublicStation {
   id: string; name: string; country: string; latitude: number; longitude: number; altitudeM: number;
   antennaType: string; antennaSizeM: number; bands: string[]; protocols: string[]; pricePerPass: number; ownerName: string;
+  reliability?: Reliability | null;
 }
 export interface OwnedSatellite {
   id: string; name: string; noradId: number; intlDesignator: string | null; band: string; downlinkMHz: number;
   protocol: string; status: AssetStatus; reviewNote: string | null; createdAt: string;
 }
 export interface OwnedStation extends Omit<PublicStation, "ownerName"> {
-  status: AssetStatus; reviewNote: string | null; createdAt: string;
+  status: AssetStatus; reviewNote: string | null; createdAt: string; hasKey?: boolean;
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LogOut } from "lucide-react";
 import { PageTitle } from "@/components/ui";
+import { ChangePassword } from "@/components/ChangePassword";
 import { signOut, updateProfile, useSession, type Session } from "@/lib/session";
 
 const FIELDS = {
@@ -14,7 +15,7 @@ const FIELDS = {
 export default function Profile() {
   const session = useSession();
   if (!session) return null; // layout handles loading + redirect
-  return <ProfileForm key={session.email} session={session} />;
+  return <><ProfileForm key={session.email} session={session} /><ChangePassword /></>;
 }
 
 function ProfileForm({ session }: { session: Session }) {

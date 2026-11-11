@@ -21,7 +21,7 @@ const TABS = [
   { id: "owner", title: "Station owner", icon: Antenna, blurb: "List your ground station and earn per pass." },
 ] as const;
 const NOUN = { operator: "satellite operator", owner: "station owner", admin: "admin" } as const;
-const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin" } as const;
+const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin/overview" } as const;
 
 const META = [["VERIFICATION", "3-badge owner checks"], ["ORBIT DATA", "Live CelesTrak · SGP4"], ["SETTLEMENT", "Pro-rata, verified"]];
 const gridBg = {
@@ -129,10 +129,11 @@ function LoginForm() {
                 </button>
               </span>
               {err("password")}</label>
-            {mode === "login" && <div className="text-right"><button type="button" onClick={() => toast.info("Password reset by email isn’t enabled yet — contact support")} className="text-sm text-muted underline underline-offset-4 hover:text-white">Forgot password?</button></div>}
+            {mode === "login" && <div className="text-right"><Link href="/forgot" className="text-sm text-muted underline underline-offset-4 hover:text-white">Forgot password?</Link></div>}
             <button disabled={busy} className="mono flex w-full items-center justify-center gap-2 rounded-md bg-accent py-4 text-sm font-semibold uppercase tracking-[.14em] shadow-[0_3px_0_#1d4ed8] transition hover:bg-blue-500 active:translate-y-px active:shadow-none disabled:opacity-60">
               {busy ? <Loader2 size={15} className="animate-spin" /> : null}{mode === "login" ? "Sign in" : "Create account"}{!busy && <ArrowRight size={15} />}
             </button>
+            {mode === "signup" && <p className="text-xs normal-case tracking-normal text-muted">By creating an account you agree to the <Link href="/terms" className="underline">Terms</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.</p>}
             {errors.form && <p role="alert" className="text-sm normal-case tracking-normal text-red-400">{errors.form}</p>}
           </form>
 

@@ -3,12 +3,14 @@ import { db } from "@/lib/server/db";
 import { requireUser } from "@/lib/server/auth";
 import { body, handle, rateLimit } from "@/lib/server/http";
 import { ownedStation } from "@/lib/server/assets";
+import { reliability } from "@/lib/server/bookings";
 import { StationInput } from "@/lib/assets";
 
 export const GET = handle(async () => {
   const u = await requireUser(["owner"]);
   const list = await db.groundStation.findMany({ where: { ownerId: u.id }, orderBy: { createdAt: "desc" } });
-  return NextResponse.json({ stations: list.map(ownedStation) });
+  const rel = await reliability(list.map(s => s.id));
+  return NextResponse.json({ stations: list.map(s => ({ ...ownedStation(s), hasKey: !!s.publicKey, reliability: rel.get(s.id) ?? null })) });
 });
 
 /** Register a ground station. It starts as `pending` and never appears in the marketplace until an admin activates it. */

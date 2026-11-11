@@ -6,6 +6,7 @@ import { useApi } from "@/lib/api-client";
 import { useVerification } from "@/lib/verification/store";
 import { badgeStates, DEFAULT_SETUP } from "@/lib/verification/requirements";
 import type { OwnedSatellite } from "@/lib/assets";
+import { BOOKING_STATUS, money, type BookingView } from "@/lib/bookings-shared";
 
 interface P { id: string; satellite: string; station: string; aos: number; maxElDeg: number; durationS: number }
 
@@ -13,6 +14,8 @@ export default function OperatorOverview() {
   const sats = useApi<{ satellites: OwnedSatellite[] }>("/api/satellites");
   const passes = useApi<{ passes: P[]; activeStations: number }>("/api/v1/passes?minEl=10&hours=24");
   const v = useVerification();
+  const bookings = useApi<{ bookings: BookingView[] }>("/api/bookings");
+  const wallet = useApi<{ balance: number; inEscrow: number }>("/api/wallet");
   const [now] = useState(() => Date.now());
   const active = sats?.satellites.filter(s => s.status === "active").length ?? 0;
   const badges = badgeStates("satellite", v?.setup ?? DEFAULT_SETUP, v?.subs ?? {});
@@ -24,8 +27,8 @@ export default function OperatorOverview() {
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {sats === undefined || v === undefined ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-24" />) : <>
           <Stat label="Verification" value={v?.decision?.status === "approved" ? "Approved" : `${badges.filter(b => b.earned).length}/3 badges`} tone={v?.decision?.status === "approved" ? "ok" : "warn"} />
+          <Stat label="Credits" value={money(wallet?.balance ?? 0)} hint={`${money(wallet?.inEscrow ?? 0)} in escrow`} />
           <Stat label="My satellites" value={String(sats?.satellites.length ?? 0)} hint={`${active} active`} />
-          <Stat label="Passes, next 24 h (≥10°)" value={passes ? String(passes.passes.length) : "—"} />
           <Stat label="Next pass" value={next ? `${Math.max(0, Math.round((next.aos - now) / 60000))} min` : "—"} hint={next ? `${next.satellite} · ${next.station}` : undefined} />
         </>}
       </div>
@@ -43,7 +46,17 @@ export default function OperatorOverview() {
           {sats?.satellites.length === 0 && <p className="py-6 text-center text-sm text-muted">No satellites registered yet.</p>}
           {sats?.satellites.slice(0, 6).map(s => <div key={s.id} className="flex items-center justify-between border-t border-line py-2.5 text-sm"><div><div>{s.name}</div><div className="mono text-xs text-muted">NORAD {s.noradId} · {s.band}</div></div><StatusPill status={s.status} /></div>)}
         </div>
-        <div className="lg:col-span-2"><Empty title="No bookings yet">Booking, escrow and settlement open once verified stations are live.</Empty></div>
+        <div className="panel p-4 lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between"><div className="eyebrow">Recent bookings</div><Link href="/dashboard/operator/bookings" className="text-xs text-cyan hover:underline">All bookings</Link></div>
+          {bookings === undefined && <div className="skeleton h-16" />}
+          {bookings?.bookings.length === 0 && <Empty title="No bookings yet">Book a pass from <Link href="/dashboard/operator/find-pass" className="text-cyan underline">Find passes</Link>.</Empty>}
+          {bookings?.bookings.slice(0, 5).map(b => (
+            <Link key={b.id} href={`/dashboard/live-pass/${b.id}`} className="flex items-center justify-between border-t border-line py-2.5 text-sm hover:bg-white/3">
+              <div><div>{b.satellite.name} → {b.station.name}</div><div className="mono text-xs text-muted">{fmtTime(b.aos)}</div></div>
+              <div className="text-right"><Badge tone={BOOKING_STATUS[b.status].tone}>{BOOKING_STATUS[b.status].label}</Badge>{b.deliveryBps != null && <div className="mono mt-1 text-xs text-emerald-400">{(b.deliveryBps / 100).toFixed(1)}% delivered</div>}</div>
+            </Link>
+          ))}
+        </div>
       </div>
     </>
   );
