@@ -68,7 +68,7 @@ export default function Home() {
           <FadeIn delay={0.25}><p className="mt-6 max-w-xl text-lg text-muted">Access a global network of ground stations. Book satellite downlinks on demand. Pay only for the data successfully received.</p></FadeIn>
           <FadeIn delay={0.4}><div className="mt-8 flex flex-wrap gap-3">
             <Btn href="/dashboard/operator/find-pass" primary>Explore Satellite Passes <ArrowRight size={16} /></Btn>
-            <Btn href="/dashboard/station-owner">Become a Ground Station Partner</Btn>
+            <Btn href="/login?as=owner&mode=signup">Become a Ground Station Partner</Btn>
           </div></FadeIn>
           <p className="mono mt-6 text-xs text-muted">Orbits on the globe are illustrative · Station sites are real coordinates · Pass counts are live SGP4 on CelesTrak data · Prices are sample data</p>
         </div>

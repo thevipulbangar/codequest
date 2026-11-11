@@ -15,8 +15,8 @@ export function useSession(): Session | null | undefined {
   return d === undefined ? undefined : d?.user ?? null;
 }
 
-export async function signIn(email: string, password: string) {
-  const { user } = await api<{ user: Session }>("/api/auth/login", { json: { email, password } });
+export async function signIn(email: string, password: string, role?: Session["role"]) {
+  const { user } = await api<{ user: Session }>("/api/auth/login", { json: { email, password, role } });
   await revalidate(ME);
   return user;
 }
