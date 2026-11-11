@@ -4,6 +4,7 @@ import { GlobeClient } from "@/components/globe/GlobeClient";
 import { Reveal } from "@/components/Reveal";
 import { Counter, FadeIn, GrowBar } from "@/components/Motion";
 import { MobileNav } from "@/components/MobileNav";
+import { AuthNavButton } from "@/components/AuthNavButton";
 import { activeStations, publicStation } from "@/lib/server/assets";
 import { getNetworkStats } from "@/lib/orbital/stats";
 import { connection } from "next/server";
@@ -85,7 +86,7 @@ export default function Home() {
         <div className="hidden gap-8 text-sm text-muted md:flex">
           <a href="#how" className="nav-link hover:text-white">How it works</a><a href="#proof" className="nav-link hover:text-white">Proof of Downlink</a><a href="#stack" className="nav-link hover:text-white">Architecture</a>
         </div>
-        <div className="flex items-center gap-2"><Link href="/login" className="rounded-lg border border-line px-4 py-2 text-sm btn-press hover:bg-white/5">Get started</Link><MobileNav links={[["#how", "How it works"], ["#proof", "Proof of Downlink"], ["#stack", "Architecture"]]} /></div>
+        <div className="flex items-center gap-2"><AuthNavButton /><MobileNav links={[["#how", "How it works"], ["#proof", "Proof of Downlink"], ["#stack", "Architecture"]]} /></div>
       </nav>
       </header>
 
