@@ -1,12 +1,47 @@
 @import "tailwindcss";
 
+/*
+ * OrbitPass design tokens.
+ *
+ * The product screens are light ("moonlight paper") with ink text. Dark is reserved for space:
+ * the home hero, the dashboard rail and the sign-in panel. Those opt in with `.on-ink`.
+ *
+ * The existing screens were written against a dark palette (text-white, bg-white/5, emerald-400 …).
+ * Rather than rewrite every class, the palette itself is remapped below: on paper, "white" is ink,
+ * so `text-white` is the strongest text and `bg-white/5` is a faint ink wash. Inside `.on-ink`
+ * the same names resolve to their light-on-dark values again.
+ */
 :root {
-  --bg: #05070b;
-  --bg2: #0b1018;
-  --card: #101722;
-  --line: #1c2636;
-  --blue: #3b82f6;
-  --cyan: #22d3ee;
+  --bg: #f2f3ef;         /* paper */
+  --bg2: #fbfbf9;        /* fields, raised paper */
+  --card: #fafaf7;
+  --line: #d3d8d3;
+  --muted: #57636e;
+  --blue: #e3a45c;       /* "accent": the warm signal colour (amber/copper) */
+  --cyan: #22756f;       /* highlight text: atmospheric teal */
+  --ink: #101a28;
+  --navy: #0f1d33;
+  --em-limb: #0f1d33; --em-orbit: #22756f; --em-signal: #b8692b; --em-fill: rgba(34, 117, 111, .1);
+}
+
+@theme {
+  --color-white: #101a28;
+  --color-black: #060a12;
+  --color-slate-200: #24303d;
+  --color-slate-300: #3a4754;
+  --color-blue-500: #eeb777;
+  --color-emerald-300: #1c7a52;
+  --color-emerald-400: #1c7a52;
+  --color-emerald-500: #23915f;
+  --color-emerald-600: #6cc79c;
+  --color-amber-200: #7a4a0c;
+  --color-amber-300: #8a5210;
+  --color-amber-400: #9a5b12;
+  --color-amber-500: #c98a2e;
+  --color-amber-600: #e3a45c;
+  --color-red-300: #a8322a;
+  --color-red-400: #b23a2e;
+  --color-red-500: #c9463a;
 }
 
 @theme inline {
@@ -16,65 +51,110 @@
   --color-line: var(--line);
   --color-accent: var(--blue);
   --color-cyan: var(--cyan);
-  --color-muted: #8b97a8;
+  --color-muted: var(--muted);
+  --color-ink: var(--ink);
+  --color-navy: var(--navy);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-html { background: var(--bg); color-scheme: dark; scroll-behavior: smooth; }
+/* Dark surfaces: restore light-on-dark meanings for everything inside. */
+.on-ink {
+  --bg: #060a12; --bg2: #0b1424; --card: #0f1d33; --line: rgba(230, 233, 228, .16); --muted: #9aa8b0;
+  --cyan: #7ccfc4;
+  --color-white: #f2f3ef; --color-slate-200: #dfe4e2; --color-slate-300: #c5ccce;
+  --color-emerald-300: #7fd6aa; --color-emerald-400: #6cc79c;
+  --color-amber-200: #f3cf98; --color-amber-300: #edc084; --color-amber-400: #e5a862;
+  --color-red-300: #f0a49c; --color-red-400: #ec8f85;
+  --em-limb: #e6e9e4; --em-orbit: #7ccfc4; --em-signal: #e5a862; --em-fill: rgba(124, 207, 196, .1);
+  color: #e6e9e4;
+}
+
+html { background: var(--bg); color-scheme: light; scroll-behavior: smooth; }
 section[id] { scroll-margin-top: 80px; }
-body { background: var(--bg); color: #e8edf5; font-family: var(--font-geist-sans), system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-geist-sans), system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid #b8692b; outline-offset: 2px; }
+.on-ink :focus-visible { outline-color: #e5a862; }
+::selection { background: #e3a45c66; }
 
-/* Subtle static starfield (two layers of radial dots) */
-.stars {
-  position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background-image:
-    radial-gradient(1px 1px at 20px 30px, #fff8 50%, transparent 51%),
-    radial-gradient(1px 1px at 140px 90px, #9cf8 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 260px 200px, #fff6 50%, transparent 51%),
-    radial-gradient(1px 1px at 330px 40px, #fff7 50%, transparent 51%);
-  background-size: 360px 260px, 290px 310px, 410px 380px, 250px 220px;
-  opacity: .5; animation: drift 240s linear infinite;
-}
-@keyframes drift { to { background-position: 360px 260px, -290px 310px, 410px -380px, 250px 220px; } }
+.display { font-family: var(--font-display), "Iowan Old Style", Georgia, serif; font-weight: 400; letter-spacing: -.02em; }
 
-/* Liquid glass bar: blur + saturation, vertical fade, inner highlight; mask fades the bottom edge into the page */
-.glass {
-  position: sticky; top: 0; z-index: 50;
-  background: linear-gradient(180deg, rgba(20, 30, 48, .72) 0%, rgba(11, 16, 24, .38) 70%, rgba(11, 16, 24, 0) 100%);
-  backdrop-filter: blur(18px) saturate(170%); -webkit-backdrop-filter: blur(18px) saturate(170%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 8px 32px rgba(0, 0, 0, .25);
-  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%); mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
+/* Space backdrop for dark panels (sign-in, dashboard rail): quiet stars and two distant lights. */
+.space {
+  background:
+    radial-gradient(1px 1px at 12% 22%, #fff9 50%, transparent 51%) 0 0 / 340px 280px,
+    radial-gradient(1px 1px at 68% 14%, #dfe9f3aa 50%, transparent 51%) 0 0 / 410px 330px,
+    radial-gradient(1.4px 1.4px at 38% 72%, #fff7 50%, transparent 51%) 0 0 / 290px 360px,
+    radial-gradient(60% 46% at 96% -6%, rgba(229, 168, 98, .2), transparent 62%),
+    radial-gradient(70% 56% at -10% 106%, rgba(34, 117, 111, .28), transparent 62%),
+    linear-gradient(180deg, #04070d 0%, #081120 58%, #0f1d33 100%);
 }
-/* Dashboard bar: no bottom mask so the profile dropdown isn't clipped */
-.glass-solid { -webkit-mask-image: none; mask-image: none; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+
+/* Top bar on product screens */
+.glass { position: sticky; top: 0; z-index: 50; background: rgba(242, 243, 239, .92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.glass-solid { }
 .glass-fixed { position: fixed; top: 0; left: 0; right: 0; }
-.glass::before { content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(120% 140% at 15% -40%, rgba(59, 130, 246, .22), transparent 55%), radial-gradient(90% 120% at 90% -50%, rgba(34, 211, 238, .16), transparent 55%); }
-.glass > * { position: relative; }
 
 /* Motion utilities */
-.lift { transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
-.lift:hover { transform: translateY(-4px); border-color: rgba(59, 130, 246, .55); box-shadow: 0 14px 40px -18px rgba(59, 130, 246, .45); }
-.shimmer-text { background-size: 200% auto; animation: shimmer 6s linear infinite; }
-@keyframes shimmer { to { background-position: 200% center; } }
-.float { animation: float 7s ease-in-out infinite; }
-@keyframes float { 50% { transform: translateY(-12px); } }
-.btn-press { transition: transform .15s ease, background-color .2s ease, box-shadow .2s ease; }
-.btn-press:hover { transform: translateY(-2px); box-shadow: 0 10px 30px -12px rgba(59, 130, 246, .6); }
-.btn-press:active { transform: translateY(0) scale(.98); }
+.lift { transition: border-color .2s ease; }
+.lift:hover { border-color: var(--ink); }
+.btn-press { transition: transform .15s ease, background-color .2s ease; }
+.btn-press:active { transform: translateY(1px); }
 .nav-link { position: relative; }
-.nav-link::after { content: ""; position: absolute; left: 0; right: 100%; bottom: -4px; height: 1px; background: var(--cyan); transition: right .25s ease; }
-.nav-link:hover::after { right: 0; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 
-.panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
-.grad-border { background: linear-gradient(180deg, #172133, #101722); border: 1px solid var(--line); border-radius: 12px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+.grad-border { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
 .mono { font-family: var(--font-geist-mono), monospace; }
-.eyebrow { font-family: var(--font-geist-mono), monospace; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan); }
-.pulse-dot { width: 7px; height: 7px; border-radius: 99px; background: #34d399; box-shadow: 0 0 0 0 #34d39966; animation: pulse 2s infinite; }
-@keyframes pulse { 70% { box-shadow: 0 0 0 7px #34d39900; } 100% { box-shadow: 0 0 0 0 #34d39900; } }
-.skeleton { background: linear-gradient(90deg, #131c2a 25%, #1a2538 50%, #131c2a 75%); background-size: 200% 100%; animation: sk 1.4s infinite; border-radius: 8px; }
+.eyebrow { font-size: 13px; font-weight: 600; color: var(--cyan); }
+.pulse-dot { width: 7px; height: 7px; border-radius: 99px; background: #7ccfc4; box-shadow: 0 0 0 0 #7ccfc466; animation: pulse 2s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 7px #7ccfc400; } 100% { box-shadow: 0 0 0 0 #7ccfc400; } }
+.skeleton { background: linear-gradient(90deg, #e6e9e4 25%, #eef0ec 50%, #e6e9e4 75%); background-size: 200% 100%; animation: sk 1.4s infinite; border-radius: 8px; }
+.on-ink .skeleton { background: linear-gradient(90deg, #12213a 25%, #1a2d4c 50%, #12213a 75%); background-size: 200% 100%; }
 @keyframes sk { to { background-position: -200% 0; } }
+
+/* Buttons that sit on the signal colour always carry ink text, on paper and on ink alike. */
+.bg-accent, .bg-amber-600, .bg-emerald-600 { color: #1a1206; }
+
+/* Native dialog used for confirmations */
+dialog.sheet { margin: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--bg2); color: var(--ink); padding: 0; width: min(32rem, calc(100vw - 2rem)); box-shadow: 0 30px 80px -20px rgba(6, 10, 18, .5); }
+dialog.sheet::backdrop { background: rgba(6, 10, 18, .55); backdrop-filter: blur(2px); }
+
+/* ── Motion across the product screens ─────────────────────────────────────
+   Quiet and functional: surfaces settle in, stars drift, controls answer the pointer.
+   All of it is switched off by the reduced-motion rule above. */
+@keyframes settle { from { opacity: 0; transform: translate3d(0, 14px, 0); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes star-drift { to { background-position: 340px 280px, -410px 330px, 290px -360px, 0 0, 0 0, 0 0; } }
+
+.space { animation: star-drift 180s linear infinite; }
+.route-fade { animation: fade-in .5s ease-out both; }
+
+/* Panels arrive one after another, like a console coming online. */
+.panel, .grad-border { animation: settle .6s cubic-bezier(.2, .7, .2, 1) both; transition: border-color .25s ease, box-shadow .25s ease; }
+:is(.panel, .grad-border):nth-child(2) { animation-delay: 60ms; }
+:is(.panel, .grad-border):nth-child(3) { animation-delay: 120ms; }
+:is(.panel, .grad-border):nth-child(4) { animation-delay: 180ms; }
+:is(.panel, .grad-border):nth-child(n + 5) { animation-delay: 240ms; }
+.panel .panel { animation: none; }
+
+/* Controls */
+a, button, input, select, textarea, summary { transition: background-color .2s ease, border-color .2s ease, color .2s ease, opacity .2s ease, box-shadow .2s ease; }
+button:not(:disabled):active { transform: translateY(1px); }
+input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(34, 117, 111, .16); }
+tbody tr { transition: background-color .2s ease; }
+
+/* Dashboard rail: the current page carries a small signal marker */
+.on-ink nav a { position: relative; }
+.on-ink nav a[aria-current="page"]::before { content: ""; position: absolute; left: -16px; top: 50%; width: 3px; height: 18px; border-radius: 0 3px 3px 0; background: #e5a862; transform: translateY(-50%); animation: fade-in .4s ease-out both; }
+
+/* Confirmation sheet */
+@keyframes sheet-in { from { opacity: 0; transform: translate3d(0, 18px, 0) scale(.98); } }
+@keyframes backdrop-in { from { opacity: 0; } }
+dialog.sheet[open] { animation: sheet-in .35s cubic-bezier(.2, .7, .2, 1) both; }
+dialog.sheet[open]::backdrop { animation: backdrop-in .3s ease-out both; }
+
+/* Toasts sit on paper */
+[data-sonner-toast] { font-family: var(--font-geist-sans), system-ui, sans-serif; }

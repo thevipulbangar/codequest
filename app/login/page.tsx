@@ -22,14 +22,11 @@ const TABS = [
 ] as const;
 const NOUN = { operator: "satellite operator", owner: "station owner", admin: "admin" } as const;
 const HOME = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin/overview" } as const;
+const AREA = { operator: "/dashboard/operator", owner: "/dashboard/station-owner", admin: "/dashboard/admin" } as const;
+/** Where to land after sign-in: the in-app page the visitor was heading to, if it belongs to this role. Never an external URL. */
+const landing = (role: Role, next: string | null) => (next && next.startsWith(AREA[role] + "/") && !next.includes("//") && !next.includes("\\") ? next : HOME[role]);
 
-const META = [["VERIFICATION", "3-badge owner checks"], ["ORBIT DATA", "Live CelesTrak · SGP4"], ["SETTLEMENT", "Pro-rata, verified"]];
-const gridBg = {
-  backgroundImage: "linear-gradient(#ffffff0d 1px, transparent 1px), linear-gradient(90deg, #ffffff0d 1px, transparent 1px)",
-  backgroundSize: "56px 56px",
-  maskImage: "radial-gradient(ellipse at 40% 50%, #000 30%, transparent 75%)",
-  WebkitMaskImage: "radial-gradient(ellipse at 40% 50%, #000 30%, transparent 75%)",
-} as const;
+const META = [["Verification", "Three owner badges, reviewed by people"], ["Orbit data", "SGP4 on CelesTrak elements"], ["Settlement", "Pro-rata, on verified frames"]];
 
 export default function Login() {
   // useSearchParams needs a Suspense boundary for prerendering.
@@ -44,7 +41,8 @@ function LoginForm() {
   const [role, setRole] = useState<Role>(initialRole);
   const session = useSession();
   // Already signed in? Go straight to the dashboard instead of showing the form again.
-  useEffect(() => { if (session) router.replace(HOME[session.role]); }, [session, router]);
+  const next = q.get("next");
+  useEffect(() => { if (session) router.replace(landing(session.role, next)); }, [session, router, next]);
   const [f, setF] = useState({ name: "", email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -64,7 +62,7 @@ function LoginForm() {
         ? await signUp({ name: r.data.name!, email: r.data.email, password: r.data.password, role: role as "operator" | "owner" })
         : await signIn(r.data.email, r.data.password, role);
       toast.success(mode === "signup" ? "Account created" : "Signed in");
-      router.push(HOME[user.role]);
+      router.push(landing(user.role, next));
     } catch (e) {
       setErrors({ form: e instanceof Error ? e.message : "Something went wrong" });
     } finally {
@@ -72,33 +70,31 @@ function LoginForm() {
     }
   }
 
-  const lbl = "mono block text-[11px] uppercase tracking-[.14em] text-muted";
-  const inp = "mt-2 w-full rounded-md border border-line bg-bg2/70 px-4 py-3.5 text-sm normal-case tracking-normal text-white outline-none transition placeholder:text-muted/60 focus:border-accent";
-  const err = (k: string) => errors[k] && <p className="mt-1.5 text-xs normal-case tracking-normal text-red-400">{errors[k]}</p>;
+  const lbl = "block text-sm text-muted";
+  const inp = "mt-2 w-full rounded-md border border-line bg-bg2 px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-muted/60 focus:border-accent";
+  const err = (k: string) => errors[k] && <p className="mt-1.5 text-xs text-red-400">{errors[k]}</p>;
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.15fr_1fr]">
       {/* Info panel */}
-      <section className="relative hidden flex-col justify-between overflow-hidden border-r border-line bg-black/30 px-14 py-12 lg:flex">
-        <div className="pointer-events-none absolute inset-0" style={gridBg} />
-        <div className="pointer-events-none absolute -left-32 top-1/3 h-96 w-96 rounded-full bg-accent/15 blur-3xl" />
-        <Link href="/" className="mono relative flex w-fit items-center gap-3 text-sm font-semibold uppercase tracking-[.2em]">
+      <section className="on-ink space relative hidden flex-col justify-between overflow-hidden px-14 py-12 lg:flex">
+        <Link href="/" className="display relative flex w-fit items-center gap-3 text-2xl">
           <Logo />OrbitPass
         </Link>
         <FadeIn className="relative">
-          <div className="mono mb-6 flex items-center gap-2 text-xs uppercase tracking-[.14em] text-muted"><span className="pulse-dot" />MISSION CONTROL · LIVE</div>
-          <h2 className="text-6xl font-semibold leading-[.98] tracking-tighter xl:text-8xl">Welcome to mission control<span className="text-accent">.</span></h2>
-          <p className="mt-6 max-w-md text-muted">Book satellite passes on demand. Pay only for the frames that Proof of Downlink verifies.</p>
+          <Logo size={150} className="mb-10" />
+          <h2 className="display text-6xl font-light leading-[.98] xl:text-7xl">Ground time,<br /><em className="text-amber-400">on your terms.</em></h2>
+          <p className="mt-6 max-w-md text-slate-300">Book single satellite passes at verified ground stations. Fees wait in escrow and are released only for frames proven delivered.</p>
         </FadeIn>
         <dl className="relative grid grid-cols-3 gap-6 border-t border-line pt-6">
-          {META.map(([k, v]) => <div key={k}><dt className="mono text-[11px] tracking-[.14em] text-muted">{k}</dt><dd className="mono mt-1 text-sm">{v}</dd></div>)}
+          {META.map(([k, v]) => <div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="mt-1 text-sm">{v}</dd></div>)}
         </dl>
       </section>
 
       {/* Form panel */}
       <section className="flex items-center px-6 py-12 sm:px-14 xl:px-24">
         <FadeIn delay={0.15} className="w-full max-w-md">
-          <Link href="/" className="mono mb-10 flex items-center gap-2 text-sm font-semibold uppercase tracking-[.2em] lg:hidden"><Logo />OrbitPass</Link>
+          <Link href="/" className="display mb-10 flex items-center gap-2 text-2xl lg:hidden"><Logo />OrbitPass</Link>
           {role !== "admin" ? (
             <div role="tablist" aria-label="Account type" className="grid grid-cols-2 gap-2">
               {TABS.map(({ id, title, icon: Icon, blurb }) => (
@@ -113,8 +109,7 @@ function LoginForm() {
             <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-300"><ShieldCheck size={15} />Platform admin sign-in</div>
           )}
 
-          <div className="mono mt-7 text-[11px] uppercase tracking-[.14em] text-muted">Authentication</div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight">{mode === "login" ? `Sign in as ${role === "admin" ? "an" : "a"} ${NOUN[role]}` : `Create a ${NOUN[role]} account`}</h1>
+          <h1 className="display mt-8 text-4xl">{mode === "login" ? `Sign in as ${role === "admin" ? "an" : "a"} ${NOUN[role]}` : `Create a ${NOUN[role]} account`}</h1>
           <p className="mt-2 text-sm text-muted">{role === "admin" ? "Review owner verifications and approvals." : mode === "login" ? "Pick up where your last pass left off." : "Your account type is fixed once the account is created."}</p>
 
           <form onSubmit={submit} className="mt-6 space-y-5" noValidate>
@@ -130,11 +125,11 @@ function LoginForm() {
               </span>
               {err("password")}</label>
             {mode === "login" && <div className="text-right"><Link href="/forgot" className="text-sm text-muted underline underline-offset-4 hover:text-white">Forgot password?</Link></div>}
-            <button disabled={busy} className="mono flex w-full items-center justify-center gap-2 rounded-md bg-accent py-4 text-sm font-semibold uppercase tracking-[.14em] shadow-[0_3px_0_#1d4ed8] transition hover:bg-blue-500 active:translate-y-px active:shadow-none disabled:opacity-60">
+            <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-full bg-navy py-3.5 text-sm font-semibold text-bg transition hover:opacity-90 active:translate-y-px disabled:opacity-60">
               {busy ? <Loader2 size={15} className="animate-spin" /> : null}{mode === "login" ? "Sign in" : "Create account"}{!busy && <ArrowRight size={15} />}
             </button>
-            {mode === "signup" && <p className="text-xs normal-case tracking-normal text-muted">By creating an account you agree to the <Link href="/terms" className="underline">Terms</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.</p>}
-            {errors.form && <p role="alert" className="text-sm normal-case tracking-normal text-red-400">{errors.form}</p>}
+            {mode === "signup" && <p className="text-xs text-muted">By creating an account you agree to the <Link href="/terms" className="underline">Terms</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.</p>}
+            {errors.form && <p role="alert" className="text-sm text-red-400">{errors.form}</p>}
           </form>
 
           {role !== "admin" && (

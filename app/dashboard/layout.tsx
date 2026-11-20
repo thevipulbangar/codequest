@@ -80,18 +80,19 @@ function DashShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-60 shrink-0 border-r border-line bg-bg2/80 p-4 md:block">
-        <Link href={HOME[session.role]} className="mb-6 flex items-center gap-2 font-semibold"><Logo />OrbitPass</Link>
-        <div className="mono mb-3 px-3 text-[11px] uppercase tracking-[.14em] text-muted">{ROLE_LABEL[session.role]}</div>
+      <aside className="on-ink space sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto p-4 md:block">
+        <Link href={HOME[session.role]} className="display mb-8 flex items-center gap-2 px-1 text-xl"><Logo size={28} />OrbitPass</Link>
+        <div className="mb-3 px-3 text-xs text-muted">{ROLE_LABEL[session.role]}</div>
         <nav className="space-y-1">
           {NAV[session.role].map(([href, label, Icon]) => (
-            <Link key={href} href={href} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${path === href ? "bg-white/8 text-white" : "text-muted hover:bg-white/5 hover:text-white"}`}><Icon size={16} />{label}</Link>
+            <Link key={href} href={href} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${path === href ? "bg-white/10 text-white" : "text-muted hover:bg-white/5 hover:text-white"}`} aria-current={path === href ? "page" : undefined}><Icon size={16} />{label}</Link>
           ))}
         </nav>
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="glass glass-solid flex items-center justify-between px-4 py-3 pb-5 sm:px-6">
-          <span className="text-sm text-muted">{ROLE_LABEL[session.role]}</span>
+        <header className="glass flex items-center justify-between px-4 py-3 sm:px-6">
+          <Link href={HOME[session.role]} className="display flex items-center gap-2 text-lg md:hidden"><Logo size={24} />OrbitPass</Link>
+          <span className="hidden text-sm text-muted md:block">{ROLE_LABEL[session.role]}</span>
           <div className="flex items-center gap-4">
             <NotificationBell />
             <div className="relative" ref={menu}>
@@ -100,11 +101,11 @@ function DashShell({ children }: { children: React.ReactNode }) {
                 <span className="hidden max-w-32 truncate sm:block">{session.name}</span>
               </button>
               {open && (
-                <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-line bg-card shadow-2xl shadow-black/50">
+                <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-line bg-bg2 shadow-xl shadow-black/20">
                   <div className="border-b border-line p-4">
                     <div className="truncate font-medium">{session.name}</div>
                     <div className="truncate text-xs text-muted">{session.email}</div>
-                    <div className="mono mt-2 text-[11px] text-cyan">{ROLE_LABEL[session.role]}{session.company ? ` · ${session.company}` : ""}</div>
+                    <div className="mt-2 text-xs text-cyan">{ROLE_LABEL[session.role]}{session.company ? ` · ${session.company}` : ""}</div>
                     {badges.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{badges.map(b => <span key={b.badge} className={`mono rounded px-1.5 py-0.5 text-[10px] ${b.earned ? "bg-emerald-500/10 text-emerald-400" : "bg-white/5 text-muted"}`}>{b.earned ? "✓ " : ""}{BADGE_LABEL(b.badge, vstate?.setup ?? DEFAULT_SETUP).replace("Verified ", "")}</span>)}</div>}
                   </div>
                   <Link role="menuitem" href="/dashboard/profile" onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-white/5"><User size={15} />Profile</Link>
@@ -116,11 +117,11 @@ function DashShell({ children }: { children: React.ReactNode }) {
         </header>
         <nav className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2 md:hidden" aria-label="Sections">
           {NAV[session.role].map(([href, label, Icon]) => (
-            <Link key={href} href={href} className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm ${path === href ? "bg-white/8 text-white" : "text-muted"}`}><Icon size={15} />{label}</Link>
+            <Link key={href} href={href} className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm ${path === href ? "bg-white/10 text-white" : "text-muted"}`} aria-current={path === href ? "page" : undefined}><Icon size={15} />{label}</Link>
           ))}
         </nav>
         <EmailBanner />
-        <div className="p-4 sm:p-6">{children}</div>
+        <main className="mx-auto max-w-6xl p-4 sm:p-8">{children}</main>
       </div>
     </div>
   );

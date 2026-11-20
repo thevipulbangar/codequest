@@ -1,12 +1,12 @@
 import { Counter } from "./Motion";
 export const PageTitle = ({ title, sub }: { title: string; sub?: string }) => (
-  <div className="mb-6"><h1 className="text-2xl font-semibold tracking-tight">{title}</h1>{sub && <p className="mt-1 text-sm text-muted">{sub}</p>}</div>
+  <div className="mb-6"><h1 className="display text-3xl sm:text-4xl">{title}</h1>{sub && <p className="mt-2 max-w-2xl text-sm text-muted">{sub}</p>}</div>
 );
 
 export const Stat = ({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "ok" | "warn" }) => (
   <div className="panel p-4">
     <div className="text-xs text-muted">{label}</div>
-    <div className={`mt-1 text-2xl font-semibold tracking-tight ${tone === "ok" ? "text-emerald-400" : tone === "warn" ? "text-amber-400" : ""}`}><Counter value={value} /></div>
+    <div className={`mt-1 display text-3xl ${tone === "ok" ? "text-emerald-400" : tone === "warn" ? "text-amber-400" : ""}`}><Counter value={value} /></div>
     {hint && <div className="mono mt-1 text-[11px] text-muted">{hint}</div>}
   </div>
 );
