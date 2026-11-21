@@ -13,7 +13,7 @@ export const balanceOf = async (userId: string) =>
   D((await db.creditAccount.findUnique({ where: { userId } }))?.balance ?? 0);
 
 /** Credit a user (inside a transaction). Returns the new balance. */
-export async function credit(tx: Tx, userId: string, amount: Prisma.Decimal, entry: { type: "credit_grant" | "payout" | "refund" | "adjustment"; bookingId?: string; note?: string }) {
+export async function credit(tx: Tx, userId: string, amount: Prisma.Decimal, entry: { type: "credit_grant" | "payout" | "refund" | "adjustment" | "compensation"; bookingId?: string; note?: string }) {
   if (amount.isNegative()) throw new Error("credit amount must be >= 0");
   const acc = await tx.creditAccount.upsert({ where: { userId }, create: { userId, balance: amount }, update: { balance: { increment: amount } } });
   await tx.ledgerEntry.create({ data: { userId, amount, balanceAfter: acc.balance, ...entry } });
@@ -21,7 +21,7 @@ export async function credit(tx: Tx, userId: string, amount: Prisma.Decimal, ent
 }
 
 /** Debit a user only if they have enough (atomic conditional update). Throws 402 otherwise. */
-export async function debit(tx: Tx, userId: string, amount: Prisma.Decimal, entry: { type: "escrow_lock" | "adjustment"; bookingId?: string; note?: string }) {
+export async function debit(tx: Tx, userId: string, amount: Prisma.Decimal, entry: { type: "escrow_lock" | "adjustment" | "premium"; bookingId?: string; note?: string }) {
   const r = await tx.creditAccount.updateMany({ where: { userId, balance: { gte: amount } }, data: { balance: { decrement: amount } } });
   if (r.count !== 1) throw new HttpError(402, "Not enough credits");
   const acc = await tx.creditAccount.findUniqueOrThrow({ where: { userId } });

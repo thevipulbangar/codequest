@@ -3,6 +3,7 @@ export interface BookingView {
   id: string;
   status: "confirmed" | "manifest_committed" | "settled" | "cancelled" | "expired";
   role: "operator" | "station" | "admin";
+  contractId: string | null; backup: boolean;
   satellite: { id: string; name: string; noradId: number; band: string; downlinkMHz: number };
   station: { id: string; name: string; country: string; latitude: number; longitude: number; owner: string; hasKey: boolean };
   operator: string;

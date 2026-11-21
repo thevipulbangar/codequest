@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageTitle } from "@/components/ui";
 import { BookingsList } from "@/components/BookingsList";
+import { CalendarLink } from "@/components/CalendarLink";
 
 export default function OperatorBookings() {
   return (
@@ -14,6 +15,7 @@ export default function OperatorBookings() {
           <li>Click <b>Commit manifest</b> on the booking and pick <code className="mono">manifest.json</code>. Only SHA-256 hashes are uploaded, never your data.</li>
         </ol>
       </details>
+      <CalendarLink />
       <BookingsList empty={<>Find a pass and book it. <Link href="/dashboard/operator/find-pass" className="text-cyan underline">Find passes</Link></>} />
     </div>
   );

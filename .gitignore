@@ -52,3 +52,6 @@ AGENTS.md
 
 # original logo artwork (source file, not served)
 /Satellite Orbit and Communication Station.png
+
+# demo network logins and station keys (npm run demo:seed)
+/.demo/

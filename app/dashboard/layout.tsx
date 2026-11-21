@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Satellite, LayoutDashboard, Search, Radio, Antenna, LogOut, User, BadgeCheck, ClipboardCheck, Boxes, CalendarCheck, Wallet, Scale } from "lucide-react";
+import { Satellite, LayoutDashboard, Search, Radio, Antenna, LogOut, User, BadgeCheck, ClipboardCheck, Boxes, CalendarCheck, Wallet, Scale, ShieldCheck, Calculator } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { EmailBanner } from "@/components/EmailBanner";
 import { signOut, useSession } from "@/lib/session";
@@ -15,6 +15,7 @@ const NAV = {
   operator: [
     ["/dashboard/operator", "Overview", LayoutDashboard],
     ["/dashboard/operator/find-pass", "Find Passes", Search],
+    ["/dashboard/operator/contracts", "Guaranteed Downlink", ShieldCheck],
     ["/dashboard/operator/bookings", "My Bookings", CalendarCheck],
     ["/dashboard/operator/stations", "Stations", Radio],
     ["/dashboard/operator/satellites", "My Satellites", Satellite],
@@ -27,6 +28,7 @@ const NAV = {
     ["/dashboard/station-owner/stations", "My Stations", Antenna],
     ["/dashboard/station-owner/bookings", "Bookings", CalendarCheck],
     ["/dashboard/station-owner/earnings", "Earnings", Wallet],
+    ["/estimate", "Earnings estimate", Calculator],
     ["/dashboard/disputes", "Disputes", Scale],
     ["/dashboard/verification", "Owner verification", BadgeCheck],
   ],

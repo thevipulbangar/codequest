@@ -59,7 +59,7 @@ export function bookingView(b: Full, u: User) {
   const mine = b.operatorId === u.id, station = b.station.ownerId === u.id;
   const n = (d: Prisma.Decimal | null) => (d === null ? null : Number(d));
   return {
-    id: b.id, status: b.status, role: mine ? "operator" : station ? "station" : "admin",
+    id: b.id, status: b.status, role: mine ? "operator" : station ? "station" : "admin", contractId: b.contractId, backup: b.backup,
     satellite: { id: b.satellite.id, name: b.satellite.name, noradId: b.satellite.noradId, band: b.satellite.band, downlinkMHz: b.satellite.downlinkMHz },
     station: { id: b.station.id, name: b.station.name, country: b.station.country, latitude: b.station.latitude, longitude: b.station.longitude, owner: b.station.owner.company || b.station.owner.name, hasKey: !!b.station.publicKey },
     operator: b.operator.company || b.operator.name,
@@ -87,6 +87,14 @@ export async function refundFull(b: Booking, status: "cancelled" | "expired", no
     if (r.count !== 1) throw new HttpError(409, "This booking can no longer be changed");
     await credit(tx, b.operatorId, new Prisma.Decimal(b.price), { type: "refund", bookingId: b.id, note });
   }, TX);
+  await afterContractBooking(b.contractId);
+}
+
+/** A guaranteed-downlink booking changed: re-check its contract (fulfil, re-book or compensate). Never throws. */
+async function afterContractBooking(contractId: string | null) {
+  if (!contractId) return;
+  // Dynamic import: contracts.ts depends on this module.
+  await import("./contracts").then(m => m.reconcileContract(contractId)).catch(e => console.error("[contracts]", e));
 }
 
 /** Expire one overdue booking: full refund + tell the station. Shared by the manual claim and the sweep. */
@@ -112,6 +120,7 @@ export async function expireOverdue() {
   });
   // A booking settled/claimed meanwhile throws 409 from the status guard; skip it.
   await Promise.all(due.map(b => expireBooking(b).catch(() => {})));
+  await import("./contracts").then(m => m.sweepContracts()).catch(e => console.error("[contracts]", e));
 }
 
 /**
@@ -143,6 +152,7 @@ export async function verifyAndSettle(b: Full, receipt: Receipt) {
   const pct = (report.deliveryBps / 100).toFixed(2);
   void notify(b.operatorId, "Pass settled", `${b.satellite.name} via ${b.station.name}: ${pct}% delivered. Refund ${refund.toFixed(2)} credits.`, "/dashboard/operator/bookings");
   void notify(b.station.ownerId, "Pass settled", `${b.satellite.name} via ${b.station.name}: ${pct}% verified. Payout ${net.toFixed(2)} credits.`, "/dashboard/station-owner/bookings");
+  await afterContractBooking(b.contractId);
   return report;
 }
 

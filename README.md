@@ -64,3 +64,27 @@ Admins sign in at `/login?as=admin`. Admin accounts can only be created with the
 - Login, sign-up and password reset are rate-limited across all instances (Postgres).
 - Settlement amounts are never taken from the client; the natural-language search is deterministic and never touches prices.
 - Admin actions and document views are written to an audit log.
+
+## Guaranteed Downlink
+
+Operators can order a volume of data by a deadline ("2 MB from ISS within 48 h") instead of single passes:
+
+- **Planner** (`lib/guarantee/planner.ts`, tested in `tests/planner.test.ts`): picks the cheapest passes per expected MB across all stations, using each station's reliability as its success rate, then adds backup passes until the chance of meeting the target is at least 95% (Monte Carlo, seeded).
+- **Guarantee price** = pass prices + premium, where premium = compensation × miss probability × 1.25. More reliable stations and longer deadlines lower it.
+- **Auto re-booking**: when a contract's booking is cancelled, expires or under-delivers, `reconcileContract` (`lib/server/contracts.ts`) books replacement passes until confidence is back at 95%, never re-using a slot the contract already lost.
+- **Fulfilment and compensation**: once the verified volume reaches the target, unused future passes are released and refunded. If the deadline passes short of the target, the agreed compensation is paid from the platform reserve automatically.
+- **Public proof** `/proof/<bookingId>` re-verifies the signed receipt on every visit. `/proof/contract/<id>` is the contract certificate.
+- **Earnings estimate** `/estimate` (public): real SGP4 passes over any location for OrbitPass satellites and well-known reference missions.
+- **Calendar export**: `/api/bookings/ics`.
+
+## Demo network
+
+```bash
+npm run demo:seed                       # 6 "Demo ·" stations, 3 owners, 1 operator with ISS + NOAA 19, 5,000 credits
+npm run demo:agent -- --url https://orbitpasss.netlify.app --cancel 0.2
+                                        # station agent: commits manifests, signs receipts after each real pass,
+                                        # and cancels ~20% of guaranteed passes to show auto re-booking
+npm run demo:seed -- --remove           # delete all demo data
+```
+
+Logins and station signing keys are written to `.demo/accounts.json` (git-ignored). Frame data from the agent is synthetic; passes, verification, settlement and guarantees are real.

@@ -1,5 +1,6 @@
 import { PageTitle } from "@/components/ui";
 import { BookingsList } from "@/components/BookingsList";
+import { CalendarLink } from "@/components/CalendarLink";
 
 export default function StationBookings() {
   return (
@@ -14,6 +15,7 @@ export default function StationBookings() {
           <li>Click <b>Submit signed receipt</b> and pick <code className="mono">receipt.json</code>. Receipts are accepted up to 24 h after the pass.</li>
         </ol>
       </details>
+      <CalendarLink />
       <BookingsList empty="Bookings appear here when operators book passes on your active stations." />
     </div>
   );

@@ -49,6 +49,7 @@ model User {
   credit        CreditAccount?
   ledger        LedgerEntry[]
   bookings      Booking[]       @relation("operatorBookings")
+  contracts     DataContract[]
   disputes      Dispute[]       @relation("disputeRaiser")
   notifications Notification[]
   tokens        AuthToken[]
@@ -73,6 +74,7 @@ model Satellite {
   downlinkMHz    Float
   protocol       String
   bookings       Booking[]
+  contracts      DataContract[]
   status         AssetStatus @default(pending)
   reviewNote     String?
   reviewedAt     DateTime?
@@ -221,7 +223,15 @@ model Booking {
   updatedAt      DateTime      @updatedAt
   ledger         LedgerEntry[]
   disputes       Dispute[]
+  /// Set when the booking was made by a Guaranteed Downlink contract.
+  contractId     String?
+  contract       DataContract? @relation(fields: [contractId], references: [id])
+  /// Volume this pass is planned to carry (MB); verified MB = plannedMB × deliveryBps / 10000.
+  plannedMB      Float?
+  /// Extra pass reserved in case another fails; released when the contract is already met.
+  backup         Boolean       @default(false)
 
+  @@index([contractId])
   @@index([stationId, aos])
   @@index([operatorId, aos])
   @@index([status])
@@ -242,6 +252,8 @@ enum LedgerType {
   refund
   platform_fee
   adjustment
+  premium // guarantee premium paid into the platform reserve
+  compensation // reserve pays the operator for a missed guarantee
 }
 
 /// Append-only. userId NULL = platform account. For every booking: escrow_lock = payout + platform_fee + refund.
@@ -317,4 +329,38 @@ model RateLimit {
   key     String   @id
   count   Int
   resetAt DateTime
+}
+
+enum ContractStatus {
+  active
+  fulfilled
+  missed
+  cancelled
+}
+
+/// Guaranteed Downlink: "targetMB from this satellite by the deadline". Backed by ordinary bookings.
+model DataContract {
+  id            String         @id @default(uuid())
+  operatorId    String
+  operator      User           @relation(fields: [operatorId], references: [id])
+  satelliteId   String
+  satellite     Satellite      @relation(fields: [satelliteId], references: [id])
+  targetMB      Float
+  rateKbps      Float
+  minElDeg      Float          @default(10)
+  deadline      DateTime
+  passCost      Decimal        @db.Decimal(12, 2)
+  premium       Decimal        @db.Decimal(12, 2)
+  compensation  Decimal        @db.Decimal(12, 2)
+  /// Planner's chance of meeting the target at purchase, basis points.
+  confidenceBps Int
+  status        ContractStatus @default(active)
+  verifiedMB    Float          @default(0)
+  closedAt      DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  bookings      Booking[]
+
+  @@index([operatorId])
+  @@index([status, deadline])
 }

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { FileUp, Radio } from "lucide-react";
+import { FileUp, Radio, ShieldCheck } from "lucide-react";
 import { Badge, fmtTime } from "@/components/ui";
 import { api, revalidate } from "@/lib/api-client";
 import { BOOKING_STATUS, money, type BookingView } from "@/lib/bookings-shared";
@@ -70,6 +70,8 @@ export function BookingCard({ b }: { b: BookingView }) {
         {b.role === "station" && b.status === "confirmed" && <span className="text-xs text-muted">Waiting for the operator&apos;s manifest.</span>}
         {(b.status === "confirmed" || b.status === "manifest_committed" || b.status === "settled") &&
           <Link href={`/dashboard/live-pass/${b.id}`} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-white/5"><Radio size={13} />Live pass</Link>}
+        {b.status === "settled" && <Link href={`/proof/${b.id}`} target="_blank" className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-white/5"><ShieldCheck size={13} />Public proof</Link>}
+        {b.contractId && b.role !== "station" && <Link href={`/dashboard/operator/contracts/${b.contractId}`} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-white/5">{b.backup ? "Backup pass · guarantee" : "Part of a guarantee"}</Link>}
         {b.can.claimRefund && <button disabled={!!busy} onClick={() => run("refund", () => api(`/api/bookings/${b.id}/refund`, { method: "POST" }), "Escrow refunded")} className="rounded-lg border border-cyan/50 px-3 py-1.5 text-xs text-cyan">Claim refund (no delivery)</button>}
         {b.can.dispute && !disputeOpen && <button onClick={() => setDisputeOpen(true)} className="rounded-lg border border-amber-500/50 px-3 py-1.5 text-xs text-amber-300">Dispute</button>}
         {b.can.cancel && <button disabled={!!busy} onClick={() => confirm(`Cancel this booking? ${b.role === "station" ? "The operator is refunded in full and it may affect your reliability." : "Your credits are refunded in full."}`) && run("cancel", () => api(`/api/bookings/${b.id}/cancel`, { method: "POST" }), "Booking cancelled and refunded")} className="ml-auto rounded-lg border border-red-500/40 px-3 py-1.5 text-xs text-red-300">Cancel</button>}

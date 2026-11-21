@@ -102,6 +102,10 @@ export interface OrbitPassRoutes {
   dashboard: string;
   terms: string;
   privacy: string;
+  /** Guaranteed Downlink planner (operators). */
+  guarantee: string;
+  /** Public earnings estimate for station owners. */
+  estimate: string;
 }
 
 export interface OrbitPassFrontendProps {
@@ -151,6 +155,8 @@ const DEFAULT_ROUTES: OrbitPassRoutes = {
   dashboard: "/dashboard",
   terms: "/terms",
   privacy: "/privacy",
+  guarantee: "/login?as=operator&next=%2Fdashboard%2Foperator%2Fcontracts",
+  estimate: "/estimate",
 };
 const DEFAULT_BANDS = ["VHF", "UHF", "L", "S", "X", "Ku", "Ka"] as const;
 const DEFAULT_ASSETS = { earthDay: "/tex/earth.jpg", earthNight: "/tex/earth-night.jpg" };
@@ -669,7 +675,7 @@ export function OrbitPassEmblem({ size, className, title }: { size?: number | st
 const REVEALS: [selector: string, kind: "mask" | "rise" | "row"][] = [
   ["main h2, .op-close h2", "mask"], // headings resolve out of soft focus,
   [".op-find-head p, .op-how-intro p, .op-pod-head p, .op-own-copy > p, .op-form, .op-form-notes, .op-source, .op-example, .op-own-copy .op-cta, .op-close p, .op-close .op-cta, .op-stations h3, .op-empty, .op-footer-mark", "rise"],
-  [".op-figs > div, .op-st, .op-steps li, .op-own-list li, .op-trust li, .op-qa details, .op-layers li, .op-footer-top > *", "row"],
+  [".op-figs > div, .op-st, .op-steps li, .op-own-list li, .op-trust li, .op-qa details, .op-layers li, .op-gd-card, .op-footer-top > *", "row"],
 ];
 function useScrollChoreography(rootRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
@@ -818,6 +824,15 @@ const LAYERS: [string, string, string][] = [
   ["L3", "Settlement", "Every credit movement is written to a ledger. Escrow is split pro-rata on verified frames, in whole cents that always add up to what was held."],
 ];
 
+const GUARANTEE_POINTS: [string, string][] = [
+  ["Pass planner.", "Picks passes by price per expected megabyte, using each station's verified delivery record."],
+  ["Backup passes.", "Extra passes are reserved until the chance of meeting the target is at least 95%, and released with a refund once it is met."],
+  ["Automatic re-booking.", "If a station cancels, a booking expires or a pass under-delivers, the next feasible pass is booked elsewhere."],
+  ["Guarantee price.", "Pass prices plus a premium. Reliable stations and longer deadlines make the premium smaller."],
+  ["Compensation.", "Miss the deadline and the agreed amount is paid to your wallet from the reserve, automatically."],
+  ["Certificate.", "One public page with the target, the verified volume and a proof for every pass."],
+];
+
 const OPERATOR_POINTS = [
   "More downlink time without building or renting a station.",
   "Book single passes. No contract, no minimum term.",
@@ -833,6 +848,7 @@ const FAQS: [string, string][] = [
   ["Can a booking be cancelled?", "An operator can cancel up to one hour before the pass starts. A station can cancel any time before it starts. Either way the operator is refunded in full."],
   ["How are passes predicted?", "With SGP4 on current orbital elements from CelesTrak. When you book, the server predicts the pass again, checks it against the station's other bookings and blackout periods, and only then confirms."],
   ["What can a receipt be rejected for?", "A signature that does not match the station's registered key, or a manifest root that differs from the one you committed. A rejected receipt is refused, not settled at zero, and the station can submit a corrected one."],
+  ["How does a delivery guarantee work?", "Choose a satellite, a volume and a deadline. OrbitPass books the passes it plans, holds each in escrow as usual and charges a premium into a compensation reserve. If the verified volume misses the target by the deadline, the compensation you chose is paid to your wallet. Unused backup passes are refunded in full."],
   ["How do disputes work?", "Either side can open one dispute per booking within 24 hours of settlement. An admin reviews it and can move up to the station's payout back to the operator."],
 ];
 
@@ -1016,7 +1032,7 @@ export default function OrbitPassFrontend(props: OrbitPassFrontendProps) {
     ["Contact minutes in the next 24 hours", net ? fmtInt(net.contactMin24h) : "", "Summed over every predicted pass"],
   ];
   const stationList = stations.status === "ready" ? stations.data.slice(0, 6) : [];
-  const links: [string, string][] = [["#find", "Find a pass"], ["#network", "Network"], ["#how", "How it works"], ["#owners", "Station owners"], ["#faq", "Questions"]];
+  const links: [string, string][] = [["#find", "Find a pass"], ["#guarantee", "Guarantee"], ["#how", "How it works"], ["#owners", "Station owners"], ["#faq", "Questions"]];
 
   return (
     <NavContext.Provider value={onNavigate}>
@@ -1201,6 +1217,36 @@ export default function OrbitPassFrontend(props: OrbitPassFrontendProps) {
             </div>
           </section>
 
+          {/* ── Guaranteed Downlink ── */}
+          <section className="op-sec op-gd" id="guarantee" aria-labelledby="op-gd-h">
+            <div className="op-gd-copy">
+              <h2 id="op-gd-h">Order data, not passes</h2>
+              <p>Ask for &ldquo;500 MB from your satellite by Friday 18:00 UTC&rdquo;. OrbitPass plans the cheapest set of passes across every verified station, books them in one step and stands behind the result.</p>
+              <ul className="op-own-list">
+                {GUARANTEE_POINTS.map(([b, t]) => <li key={b}><b>{b}</b> {t}</li>)}
+              </ul>
+              <div className="op-cta">
+                <A href={routes.guarantee} className="op-btn op-btn-ink">Plan a guarantee</A>
+                <a href="#faq" className="op-link">How compensation works</a>
+              </div>
+            </div>
+            <figure className="op-gd-card" aria-label="Worked example of a guarantee in progress">
+              <figcaption>Worked example, not live data</figcaption>
+              <p className="op-gd-title">500 MB from SAT-X <span>by Fri 18:00 UTC</span></p>
+              <div className="op-gd-bar" role="img" aria-label="320 of 500 MB verified, 470 MB expected"><i style={{ width: "94%" }} /><i style={{ width: "64%" }} /></div>
+              <p className="op-gd-line"><b>320 of 500 MB verified</b> · 3 passes left · <em>on track</em></p>
+              <dl className="op-gd-facts">
+                <div><dt>Passes</dt><dd>7 + 2 backup</dd></div>
+                <div><dt>Confidence</dt><dd>96.4%</dd></div>
+                <div><dt>Compensation</dt><dd>400.00</dd></div>
+              </dl>
+              <ol className="op-gd-log">
+                <li><span className="op-mono">Tue 09:12</span> Station in Chile cancelled. Replacement pass booked over Iceland.</li>
+                <li><span className="op-mono">Wed 22:40</span> Pass verified at 94%. Proof published.</li>
+              </ol>
+            </figure>
+          </section>
+
           {/* ── Station owners ── */}
           <section className="op-sec op-owners" id="owners" aria-labelledby="op-own-h">
             <div className="op-own-copy">
@@ -1215,7 +1261,7 @@ export default function OrbitPassFrontend(props: OrbitPassFrontendProps) {
               </ul>
               <div className="op-cta">
                 <A href={routes.listStation} className="op-btn op-btn-ink" onClick={listClick}>Create a station owner account</A>
-                <a href="#faq" className="op-link">Read how settlement works</a>
+                <A href={routes.estimate} className="op-link">Estimate what your antenna could earn</A>
               </div>
             </div>
             <AntennaArt />
@@ -1268,8 +1314,8 @@ export default function OrbitPassFrontend(props: OrbitPassFrontendProps) {
               <a href="#top" className="op-brand"><OrbitPassEmblem className="op-brand-mark" /><span>OrbitPass</span></a>
               <p>Pay-per-pass ground station access, settled on Proof of Downlink.</p>
             </div>
-            <nav aria-label="Operators"><h2>Operators</h2><a href="#find">Find a pass</a><a href="#how">How booking works</a><A href={routes.signUpOperator}>Create an operator account</A></nav>
-            <nav aria-label="Station owners"><h2>Station owners</h2><a href="#owners">Listing a station</a><A href={routes.listStation} onClick={listClick}>Start verification</A></nav>
+            <nav aria-label="Operators"><h2>Operators</h2><a href="#find">Find a pass</a><a href="#guarantee">Guaranteed Downlink</a><a href="#how">How booking works</a><A href={routes.signUpOperator}>Create an operator account</A></nav>
+            <nav aria-label="Station owners"><h2>Station owners</h2><a href="#owners">Listing a station</a><A href={routes.estimate}>Earnings estimate</A><A href={routes.listStation} onClick={listClick}>Start verification</A></nav>
             <nav aria-label="Account"><h2>Account</h2>{session ? <A href={routes.dashboard}>Open dashboard</A> : <A href={routes.signIn} onClick={signInClick}>Sign in</A>}<a href="#faq">Questions</a><A href={routes.terms}>Terms</A><A href={routes.privacy}>Privacy</A></nav>
           </div>
           <p className="op-footer-mark" aria-hidden="true">OrbitPass</p>
@@ -1521,6 +1567,25 @@ const CSS = `
 .op-layers .op-mono{color:var(--op-slate)}
 .op-root .op-layers h3{margin-top:4px;font-family:var(--op-display);font-weight:400;font-size:26px;letter-spacing:-.015em}
 .op-layers p{margin-top:10px;color:var(--op-slate);font-size:15.5px}
+.op-gd{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,6vw,96px);align-items:center;border-top:1px solid var(--op-rule)}
+.op-gd-copy>p{margin-top:20px;color:var(--op-slate);max-width:34em;font-size:17.5px}
+.op-gd-card{background:var(--op-navy);color:var(--op-moon);border-radius:18px;padding:clamp(22px,2.6vw,34px);box-shadow:0 30px 60px -30px rgba(6,10,18,.55)}
+.op-gd-card figcaption{font-size:12.5px;color:#9aa8ae}
+.op-gd-title{margin-top:14px;font-family:var(--op-display);font-size:26px;letter-spacing:-.015em;line-height:1.15}
+.op-gd-title span{display:block;font-size:15px;color:#b9c4c8;font-family:var(--op-sans);letter-spacing:0;margin-top:4px}
+.op-gd-bar{position:relative;height:10px;margin-top:20px;border-radius:5px;background:rgba(230,233,228,.12);overflow:hidden}
+.op-gd-bar i{position:absolute;inset:0 auto 0 0;border-radius:5px}
+.op-gd-bar i:first-child{background:rgba(124,207,196,.3)}
+.op-gd-bar i:last-child{background:var(--op-teal-l)}
+.op-gd-line{margin-top:12px;font-size:15px;color:#c9d1d3}
+.op-gd-line b{color:var(--op-moon);font-weight:600}
+.op-gd-line em{font-style:normal;color:var(--op-teal-l)}
+.op-gd-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}
+.op-gd-facts div{border-top:1px solid rgba(230,233,228,.18);padding-top:10px}
+.op-gd-facts dt{font-size:12.5px;color:#9aa8ae}
+.op-gd-facts dd{margin-top:2px;font-family:var(--op-mono-f);font-size:15px}
+.op-gd-log{margin-top:18px;display:grid;gap:8px;font-size:13.5px;color:#b9c4c8}
+.op-gd-log .op-mono{color:var(--op-amber);margin-right:8px}
 .op-faq{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,7vw,110px);border-top:1px solid var(--op-rule)}
 .op-trust ul{margin-top:24px;display:grid;gap:14px;color:var(--op-slate)}
 .op-trust li{padding-left:20px;position:relative}
@@ -1573,7 +1638,7 @@ const CSS = `
 @media (max-width:980px){
   .op-form{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 24px}
   .op-field-wide,.op-form-go{grid-column:1/-1}
-  .op-network,.op-how,.op-faq,.op-owners,.op-arch-head{grid-template-columns:minmax(0,1fr)}
+  .op-network,.op-how,.op-faq,.op-owners,.op-arch-head,.op-gd{grid-template-columns:minmax(0,1fr)}
   .op-layers{grid-template-columns:minmax(0,1fr)}
   .op-hero-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px}
   .op-antenna{max-width:380px;order:-1}
