@@ -120,6 +120,18 @@ export async function expireOverdue() {
   });
   // A booking settled/claimed meanwhile throws 409 from the status guard; skip it.
   await Promise.all(due.map(b => expireBooking(b).catch(() => {})));
+  // A pass that started without a committed manifest can never be verified. Release it now instead of
+  // 24 h later, as "cancelled" (the operator's omission, so it doesn't count against the station).
+  const missed = await db.booking.findMany({
+    where: { status: "confirmed", aos: { lt: new Date() } },
+    include: { satellite: { select: { name: true } }, station: { select: { ownerId: true, name: true } } },
+    take: 50,
+  });
+  await Promise.all(missed.map(async b => {
+    await refundFull(b, "cancelled", "No manifest was committed before the pass");
+    void notify(b.operatorId, "Pass missed: no manifest", `${b.satellite.name} @ ${b.station.name}: no frame manifest was committed before the pass, so it was released and refunded.`, b.contractId ? `/dashboard/operator/contracts/${b.contractId}` : "/dashboard/operator/bookings");
+    void notify(b.station.ownerId, "Booking released", `The ${b.satellite.name} pass was released because the operator committed no manifest. It does not affect your reliability.`, "/dashboard/station-owner/bookings");
+  }).map(p => p.catch(() => {})));
   await import("./contracts").then(m => m.sweepContracts()).catch(e => console.error("[contracts]", e));
 }
 
