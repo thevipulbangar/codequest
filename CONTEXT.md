@@ -11,7 +11,7 @@ OrbitPass is a pay-per-pass marketplace connecting small-satellite operators wit
 
 | | |
 |---|---|
-| Live site | https://orbitpasss.netlify.app (Netlify site `orbitpasss`, auto-deploys from `main`) |
+| Live site | https://orbitpasscodequest.netlify.app (Netlify site `orbitpasscodequest`, auto-deploys from `main`) |
 | Repository | https://github.com/thevipulbangar/codequest (branch `main`) |
 | Database + files | Supabase project `dnbemdyllhinydwwokbj`, region **ap-southeast-2 (Sydney)**; private bucket `verification-docs` |
 | Server functions | Netlify, region **us-east-2 (Ohio)** — region change needs a paid Netlify plan |
@@ -66,7 +66,7 @@ OrbitPass is a pay-per-pass marketplace connecting small-satellite operators wit
 - `sign-receipt.mjs --booking --station --root --frames --key` — station receipt.
 - `create-admin.mts` — via `npm run create-admin -- <email> <password> [name]`.
 - `demo-seed.mts` — `npm run demo:seed` creates the labelled demo network (6 "Demo ·" stations, 3 owners, 1 operator with ISS + NOAA 19, 5,000 credits); `-- --remove` deletes it. Logins and keys in `.demo/accounts.json` (git-ignored).
-- `demo-agent.mjs` — `npm run demo:agent -- --url https://orbitpasss.netlify.app --cancel 0.2`: station + operator agent; commits manifests, signs receipts after real passes, optionally cancels guaranteed passes to show re-booking.
+- `demo-agent.mjs` — `npm run demo:agent -- --url https://orbitpasscodequest.netlify.app --cancel 0.2`: station + operator agent; commits manifests, signs receipts after real passes, optionally cancels guaranteed passes to show re-booking.
 
 ## 7. Testing status
 
@@ -85,7 +85,7 @@ OrbitPass is a pay-per-pass marketplace connecting small-satellite operators wit
 
 ## 9. Status — done vs remaining
 
-### Done — live on https://orbitpasss.netlify.app
+### Done — live on https://orbitpasscodequest.netlify.app
 - Everything from the first release: accounts and sessions, owner verification, asset approval, SGP4 pass finder, escrow booking, Proof of Downlink settlement, disputes, reliability, live pass view, notifications, admin tools.
 - **Database moved to Supabase US East** (project `aezbgmscxzeusukxncrj`); queries ~70 ms from Netlify instead of ~1 s. Old Sydney project kept as a fallback.
 - **New frontend**: editorial landing page with WebGL intro and a turning dotted-globe emblem, restyled dashboard, login and pass finder.

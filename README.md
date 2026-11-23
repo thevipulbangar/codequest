@@ -2,7 +2,7 @@
 
 Pay-per-pass ground-station marketplace. Satellite operators book individual passes over verified ground stations; the fee is held in escrow and released **only for frames proven delivered** (Proof of Downlink).
 
-Live: https://orbitpasss.netlify.app
+Live: https://orbitpasscodequest.netlify.app
 
 ## How it works
 
@@ -81,7 +81,7 @@ Operators can order a volume of data by a deadline ("2 MB from ISS within 48 h")
 
 ```bash
 npm run demo:seed                       # 6 "Demo ·" stations, 3 owners, 1 operator with ISS + NOAA 19, 5,000 credits
-npm run demo:agent -- --url https://orbitpasss.netlify.app --cancel 0.2
+npm run demo:agent -- --url https://orbitpasscodequest.netlify.app --cancel 0.2
                                         # station agent: commits manifests, signs receipts after each real pass,
                                         # and cancels ~20% of guaranteed passes to show auto re-booking
 npm run demo:seed -- --remove           # delete all demo data
