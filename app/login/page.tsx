@@ -138,7 +138,13 @@ function LoginForm() {
               <button onClick={() => { setMode(mode === "login" ? "signup" : "login"); setErrors({}); }} className="font-medium text-white underline underline-offset-4">{mode === "login" ? `Create a ${NOUN[role]} account` : "Sign in"}</button>
             </p>
           )}
-          {/* Admins reach this form only via the unlisted /login?as=admin address. */}
+          {/* Admin accounts can't be created here; they are made by the platform. This only switches the sign-in form. */}
+          <p className="mt-8 border-t border-line pt-4 text-center text-xs text-muted">
+            <button type="button" onClick={() => { setRole(role === "admin" ? "operator" : "admin"); setMode("login"); setErrors({}); }}
+              className="inline-flex items-center gap-1.5 underline-offset-4 hover:text-white hover:underline">
+              {role === "admin" ? <>← Back to operator / station owner sign-in</> : <><ShieldCheck size={13} />Sign in as admin</>}
+            </button>
+          </p>
         </FadeIn>
       </section>
     </main>

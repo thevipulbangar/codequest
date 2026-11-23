@@ -85,6 +85,7 @@ async function reviewer() {
   const passwordHash = await hashPassword(password); // also on update: an interrupted run may not have saved the password
   await db.user.upsert({ where: { email }, create: { email, name: "Showcase Reviewer", role: "admin", passwordHash }, update: { passwordHash } });
   demo.accounts.showcaseReviewer = { email, password, role: "admin" };
+  writeFileSync(FILE, JSON.stringify(demo, null, 2)); // save now, so a crash later doesn't lose the password
   return client(demo.accounts.showcaseReviewer, false);
 }
 
