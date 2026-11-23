@@ -4,6 +4,7 @@ import { db } from "@/lib/server/db";
 import { forgetUser, publicUser, requireUser } from "@/lib/server/auth";
 import { body, handle } from "@/lib/server/http";
 import { emailEnabled } from "@/lib/server/email";
+import { assertEditable } from "@/lib/server/showcase";
 
 export const GET = handle(async () => NextResponse.json({ user: publicUser(await requireUser()), emailEnabled: emailEnabled() }));
 
@@ -19,6 +20,7 @@ const Profile = z.object({
 
 export const PATCH = handle(async (req: Request) => {
   const u = await requireUser();
+  assertEditable(u, "editing the profile");
   const data = await body(req, Profile);
   const user = await db.user.update({ where: { id: u.id }, data });
   forgetUser(u.id); // next request reloads the fresh profile

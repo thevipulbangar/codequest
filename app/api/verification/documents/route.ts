@@ -7,6 +7,7 @@ import { body, handle, rateLimit } from "@/lib/server/http";
 import { putObject, sha256, sniffType } from "@/lib/server/storage";
 import { ensureVerification, kindFor, setupOf } from "@/lib/server/verification";
 import { MAX_BYTES, docsFor, validateText } from "@/lib/verification/requirements";
+import { assertEditable } from "@/lib/server/showcase";
 
 const Json = z.union([
   z.object({ docId: z.string().max(40), text: z.string().max(60) }),
@@ -17,6 +18,7 @@ const Json = z.union([
 /** Submit one document: multipart (docId + file) or JSON (text / not-applicable / KYC). */
 export const POST = handle(async (req: Request) => {
   const u = await requireUser(["operator", "owner"]);
+  assertEditable(u, "changing verification documents");
   rateLimit(`docs:${u.id}`, 60, 3600_000);
   const v = await ensureVerification(u.id);
   const docs = docsFor(kindFor(u.role), setupOf(v));

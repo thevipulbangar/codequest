@@ -5,12 +5,14 @@ import { HttpError, forgetUser, requireUser, startSession } from "@/lib/server/a
 import { body, handle } from "@/lib/server/http";
 import { hashPassword, verifyPassword } from "@/lib/server/password";
 import { rateLimitShared } from "@/lib/server/ratelimit";
+import { assertEditable } from "@/lib/server/showcase";
 
 const Schema = z.object({ current: z.string().max(200), next: z.string().min(8, "At least 8 characters").max(72) });
 
 /** Change password while signed in. Signs out every other session. */
 export const PATCH = handle(async (req: Request) => {
   const u = await requireUser();
+  assertEditable(u, "changing the password");
   await rateLimitShared(`pwchange:${u.id}`, 5, 15 * 60_000);
   const b = await body(req, Schema);
   if (!(await verifyPassword(b.current, u.passwordHash))) throw new HttpError(400, "Current password is incorrect");

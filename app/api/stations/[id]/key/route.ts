@@ -4,10 +4,12 @@ import { z } from "zod";
 import { db } from "@/lib/server/db";
 import { HttpError, requireUser } from "@/lib/server/auth";
 import { body, handle } from "@/lib/server/http";
+import { assertEditable } from "@/lib/server/showcase";
 
 /** Register / rotate the station's ed25519 receipt-signing public key (SPKI DER, hex). */
 export const PUT = handle(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const u = await requireUser(["owner"]);
+  assertEditable(u, "changing the signing key");
   const { id } = await params;
   const { publicKey } = await body(req, z.object({ publicKey: z.string().trim().toLowerCase().regex(/^[0-9a-f]{88}$/, "Expected the 88-character hex key printed by the key generator") }));
   try {

@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/server/db";
 import { HttpError, requireUser } from "@/lib/server/auth";
 import { handle } from "@/lib/server/http";
+import { assertEditable } from "@/lib/server/showcase";
 
 export const DELETE = handle(async (_req: Request, { params }: { params: Promise<{ docId: string }> }) => {
   const u = await requireUser(["operator", "owner"]);
+  assertEditable(u, "changing verification documents");
   const { docId } = await params;
   const v = await db.verification.findUnique({ where: { userId: u.id } });
   const s = v && await db.submission.findUnique({ where: { verificationId_docId: { verificationId: v.id, docId } } });
