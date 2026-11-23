@@ -27,6 +27,20 @@ These attempts return a friendly "showcase account" message. The admin panel is 
 
 Verification documents on these accounts are labelled SAMPLE PDFs, not real records.
 
+## Admin panel
+
+Admins sign in from the login page with the **Sign in as admin** link (or `/login?as=admin`). Admin accounts cannot be created on the website; create one from the command line:
+
+```
+npm run create-admin -- <email> <password (min 12 chars)> [name]
+```
+
+An admin can:
+- **Overview** (`/dashboard/admin/overview`): see escrow held, platform revenue, credits outstanding, documents waiting and open disputes, and add credits to any user.
+- **Verification review** (`/dashboard/admin`): open each applicant's encrypted documents, approve / reject / ask for more per document (this earns the three badges), then approve or reject the account.
+- **Asset review** (`/dashboard/admin/assets`): activate or reject stations and satellites. An asset goes live only when it is active and its owner is approved.
+- **Disputes** (`/dashboard/disputes`): decide disputes and refund part of a payout to the operator.
+
 ## How it works
 
 1. **Verify** — operators and station owners upload company, ownership and licensing documents. Admins review them and award three badges (Organisation / Asset Owner / Operator).
