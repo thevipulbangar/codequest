@@ -50,6 +50,7 @@ model User {
   ledger        LedgerEntry[]
   bookings      Booking[]       @relation("operatorBookings")
   contracts     DataContract[]
+  payments      Payment[]
   disputes      Dispute[]       @relation("disputeRaiser")
   notifications Notification[]
   tokens        AuthToken[]
@@ -254,6 +255,7 @@ enum LedgerType {
   adjustment
   premium // guarantee premium paid into the platform reserve
   compensation // reserve pays the operator for a missed guarantee
+  topup // credits bought through the payment gateway
 }
 
 /// Append-only. userId NULL = platform account. For every booking: escrow_lock = payout + platform_fee + refund.
@@ -363,4 +365,29 @@ model DataContract {
 
   @@index([operatorId])
   @@index([status, deadline])
+}
+
+enum PaymentStatus {
+  created
+  paid
+  failed
+}
+
+/// Wallet top-up through Razorpay. Credits are fixed when the order is created and added exactly once.
+model Payment {
+  id          String        @id @default(uuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  provider    String        @default("razorpay")
+  orderId     String        @unique
+  paymentId   String?       @unique
+  amountPaise Int
+  currency    String        @default("INR")
+  credits     Decimal       @db.Decimal(14, 2)
+  status      PaymentStatus @default(created)
+  failReason  String?
+  createdAt   DateTime      @default(now())
+  paidAt      DateTime?
+
+  @@index([userId, createdAt])
 }

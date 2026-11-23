@@ -20,7 +20,7 @@ OrbitPass is a pay-per-pass marketplace connecting small-satellite operators wit
 
 ## 3. Architecture
 
-- **Frontend:** Next.js 16 App Router, TypeScript, Tailwind v4, Framer Motion, React Three Fiber globe, Recharts. Dark aerospace theme; liquid-glass fixed nav; logo cropped from the provided artwork (`public/logo.png`, `app/icon.png`).
+- **Frontend:** Next.js 16 App Router, TypeScript, Tailwind v4, Framer Motion, three.js (landing intro, loaded on demand), Recharts. Editorial light theme with a dark hero; SVG emblem logo (`components/Logo.tsx`), app icons in `app/icon.png`.
 - **Backend:** Next.js route handlers under `app/api/**`, wrapped by `lib/server/http.ts#handle` (maps `HttpError`, re-throws Next control-flow errors).
 - **Data:** Prisma 6 + Postgres (`prisma/schema.prisma`, migrations in `prisma/migrations`). `relationJoins` preview enabled to cut round trips.
 - **Auth (`lib/server/auth.ts`):** email + password (scrypt), opaque session token in an httpOnly cookie, only its SHA-256 stored; 60 s per-instance session cache. Roles: `operator`, `owner`, `admin`; role fixed at sign-up; the login tab must match the account type (checked after the password).

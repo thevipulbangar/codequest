@@ -2,9 +2,10 @@
 import { Badge, Empty, Stat, fmtTime } from "@/components/ui";
 import { useApi } from "@/lib/api-client";
 import { money } from "@/lib/bookings-shared";
+import { TopUp } from "@/components/TopUp";
 
 interface W { balance: number; inEscrow: number; entries: { id: string; type: string; amount: number; balanceAfter: number | null; note: string | null; at: number }[] }
-const LABEL: Record<string, string> = { credit_grant: "Credits added", escrow_lock: "Escrow locked", payout: "Pass payout", refund: "Refund", adjustment: "Adjustment", platform_fee: "Platform fee" };
+const LABEL: Record<string, string> = { credit_grant: "Credits added", escrow_lock: "Escrow locked", payout: "Pass payout", refund: "Refund", adjustment: "Adjustment", platform_fee: "Platform fee", topup: "Payment", premium: "Guarantee premium", compensation: "Compensation" };
 
 export function WalletView({ role }: { role: "operator" | "owner" }) {
   const w = useApi<W>("/api/wallet");
@@ -17,9 +18,10 @@ export function WalletView({ role }: { role: "operator" | "owner" }) {
           <Stat label="Transactions" value={String(w?.entries.length ?? 0)} />
         </>}
       </div>
+      {role === "operator" && <TopUp />}
       <div className="panel mb-4 p-4 text-sm text-muted">
         {role === "operator"
-          ? "Credits are added by OrbitPass after payment (contact support with your invoice). Booking a pass locks its price in escrow; you're refunded automatically for undelivered frames, cancellations and passes the station doesn't deliver."
+          ? "Booking a pass locks its price in escrow; you're refunded automatically for undelivered frames, cancellations and passes the station doesn't deliver."
           : "You're paid in credits for every verified frame, minus the platform fee. Contact support to withdraw earnings."}
       </div>
       {w?.entries.length === 0 && <Empty title="No transactions yet" />}
