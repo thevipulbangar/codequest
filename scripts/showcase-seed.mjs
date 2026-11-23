@@ -40,10 +40,9 @@ const TEXT = { reg_no: "U72900KA2024PTC123456", pan: "ABCDE1234F", norad: "25338
 
 // ---- HTTP ------------------------------------------------------------------------------------------
 async function client(account, signup) {
-  let r = signup
-    ? await fetch(`${URL_}/api/auth/signup`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: account.name, email: account.email, password: account.password, role: account.role }) })
-    : null;
-  if (!r || r.status === 409) r = await fetch(`${URL_}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: account.email, password: account.password, role: account.role }) });
+  // Log in first; sign up only if the account doesn't exist yet (re-runs then don't use up the sign-up rate limit).
+  let r = await fetch(`${URL_}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: account.email, password: account.password, role: account.role }) });
+  if (signup && r.status === 401) r = await fetch(`${URL_}/api/auth/signup`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: account.name, email: account.email, password: account.password, role: account.role }) });
   if (!r.ok) throw new Error(`${account.email}: ${r.status} ${await r.text()}`);
   const cookie = r.headers.getSetCookie().map(c => c.split(";")[0]).join("; ");
   const call = async (method, path, payload, form) => {
@@ -95,7 +94,11 @@ async function verify(api, admin, acc, kind) {
   await api.patch("/api/auth/me", acc.profile);
   await api.put("/api/verification/setup", SETUP);
   const docs = docsFor(kind, SETUP);
+  // An interrupted run may have approved some documents already; those can't be re-submitted.
+  const v = await db.verification.findUnique({ where: { userId: me.id }, include: { submissions: true } });
+  const done = new Set((v?.submissions ?? []).filter(s => s.status === "approved").map(s => s.docId));
   for (const d of docs) {
+    if (done.has(d.id)) continue;
     if (d.kind === "text") await api.post("/api/verification/documents", { docId: d.id, text: d.id === "norad" ? String(SATS[0].noradId) : TEXT[d.id] });
     else if (d.kind === "kyc") await api.post("/api/verification/documents", { docId: d.id, kyc: true });
     else { const f = new FormData(); f.set("docId", d.id); f.set("file", samplePdf(d.name, acc.profile.company), `${d.id}-sample.pdf`); await api.upload("/api/verification/documents", f); }

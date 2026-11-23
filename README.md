@@ -4,6 +4,29 @@ Pay-per-pass ground-station marketplace. Satellite operators book individual pas
 
 Live: https://orbitpasscodequest.netlify.app
 
+## Demo accounts for judges
+
+Two fully verified accounts that trade with each other. They already have settled passes with public proof pages.
+
+| Role | Email | Password | Who |
+|---|---|---|---|
+| Satellite operator | `operator@orbitpass.example` | `OrbitPass#Operator26` | Arjun Mehta, Kestrel Orbital (demo): NOAA 15, NOAA 18 |
+| Station owner | `owner@orbitpass.example` | `OrbitPass#Owner26` | Priya Rao, Deccan Ground Stations (demo): Demo · Hyderabad, Demo · Pune |
+
+**You can:** browse, find and book passes, commit manifests, buy Guaranteed Downlink contracts, top up the wallet, submit receipts, view earnings and proofs, cancel bookings, open disputes, and add blocked periods.
+
+**You can't**, so the accounts stay usable for everyone:
+- change the password or profile
+- change verification documents or setup
+- change a station's signing key
+- delete stations or satellites
+
+These attempts return a friendly "showcase account" message. The admin panel is not available. The `.example` email addresses cannot receive mail, so nobody can take over the accounts with a password reset.
+
+**Payments are Razorpay TEST mode only. No real money moves.** Use UPI `success@razorpay` or a [Razorpay test card](https://razorpay.com/docs/payments/payments/test-card-details/).
+
+Verification documents on these accounts are labelled SAMPLE PDFs, not real records.
+
 ## How it works
 
 1. **Verify** — operators and station owners upload company, ownership and licensing documents. Admins review them and award three badges (Organisation / Asset Owner / Operator).

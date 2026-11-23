@@ -55,9 +55,9 @@ function receiptFor(b, stationId, privateKeyHex) {
 }
 
 const seen = new Set();
-async function tick(op, owners) {
+async function tick(ops, owners) {
   const now = Date.now();
-  for (const b of (await op("/api/bookings")).bookings) {
+  for (const op of ops) for (const b of (await op("/api/bookings")).bookings) {
     if (b.status === "confirmed" && b.aos > now + 30_000) {
       await op(`/api/bookings/${b.id}/manifest`, { frames: framesFor(b.id) }).then(() => log("operator", `manifest committed · ${b.satellite.name} @ ${b.station.name}`)).catch(e => log("operator", e.message));
     }
@@ -81,10 +81,11 @@ async function tick(op, owners) {
   }
 }
 
-const op = await session(demo.accounts.operator);
-const owners = await Promise.all(["owner1", "owner2", "owner3"].map(k => session(demo.accounts[k])));
+// Every operator/owner in .demo/accounts.json (demo network + showcase accounts); admins are skipped.
+const byRole = role => Promise.all(Object.values(demo.accounts).filter(a => a.role === role).map(session));
+const [ops, owners] = await Promise.all([byRole("operator"), byRole("owner")]);
 log("agent", `watching ${Object.keys(demo.stations).length} demo stations on ${URL_} · loss ${LOSS * 100}% · cancel ${CANCEL * 100}%`);
 do {
-  await tick(op, owners).catch(e => log("agent", e.message));
+  await tick(ops, owners).catch(e => log("agent", e.message));
   if (!ONCE) await new Promise(r => setTimeout(r, 20_000));
 } while (!ONCE);
